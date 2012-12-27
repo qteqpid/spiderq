@@ -19,6 +19,7 @@ using namespace std;
 typedef struct Url {
     char *domain;
     char *path;
+    int  port;
     char *ip;
 } Url;
 
@@ -31,5 +32,6 @@ extern void push_surlqueue(char * url);
 extern Url * pop_ourlqueue();
 extern void * urlparser(void * arg);
 extern void free_url(Url * ourl);
+extern int is_ourlqueue_empty();
 
 #endif

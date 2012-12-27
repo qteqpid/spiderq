@@ -30,7 +30,9 @@ int main(int argc, void *argv[])
     chdir("download"); /* change wd to download directory */
 
     /* test */
-    seed = "http://www.imeiding.com";
+    //seed = "http://www.blue.com";
+    //seed = "http://www.imeiding.com";
+    seed = "http://trac.instreet.cn:81";
     push_surlqueue(seed);
 
     /* create a thread for parse surl to ourl */
@@ -38,6 +40,9 @@ int main(int argc, void *argv[])
     if ((err = createThread(urlparser, NULL, NULL, NULL)) < 0) {
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "Create urlparser thread fail: %s", strerror(err));
     }
+
+    while(is_ourlqueue_empty())
+        usleep(10000);
 
     /* begin */
     int sock_rv;
@@ -51,7 +56,7 @@ int main(int argc, void *argv[])
         
         /* connect socket and get sockfd */
         int sockfd;
-        if ((sock_rv = buildConnect(&sockfd, ourl->ip)) < 0) {
+        if ((sock_rv = buildConnect(&sockfd, ourl->ip, ourl->port)) < 0) {
             SPIDER_LOG(SPIDER_LEVEL_ERROR, "Build socket connect fail: %s", ourl->ip);
             exit(1);
         }

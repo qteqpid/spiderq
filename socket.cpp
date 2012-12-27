@@ -11,12 +11,12 @@ static int extract_url(char *str, char *domain);
 static char * attach_domain(char *url, const char *domain);
 static char * url2fn(const Url * url);
 
-int buildConnect(int *fd, char *ip)
+int buildConnect(int *fd, char *ip, int port)
 {
     struct sockaddr_in server_addr;
     bzero(&server_addr, sizeof(struct sockaddr_in));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(80);
+    server_addr.sin_port = htons(port);
     if (!inet_aton(ip, &(server_addr.sin_addr))) {
         return -1;
     }
@@ -102,6 +102,9 @@ void * recvResponse(void * arg)
             break;
 
         } else if (n == 0) {
+            if (len > 0)
+                write(fd, buffer, len);
+
             break;
 
         } else {

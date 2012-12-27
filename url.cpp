@@ -39,6 +39,9 @@ void * urlparser(void *arg)
     char *url = NULL;
     Url  *ourl = NULL;
     map<string, string>::const_iterator itr;
+    //event_base * base = event_base_new();
+    //evdns_base * dnsbase = evdns_base_new(base, 1);
+    //event_base_loop(base,EVLOOP_NONBLOCK);
 
     while(1) {
         while (surl_queue.empty()) {
@@ -66,12 +69,15 @@ void * urlparser(void *arg)
             itr = host_ip_map.find(ourl->domain);
             if (itr == host_ip_map.end()) { // not found
                 /* dns resolve */
+                
                 event_base * base = event_init();
                 evdns_init();
                 evdns_resolve_ipv4(ourl->domain, 0, dns_callback, ourl);
                 event_dispatch();
                 event_base_free(base);
-
+                
+                //evdns_base_resolve_ipv4(dnsbase, ourl->domain, 0, dns_callback, ourl);
+                //event_base_loop(base, EVLOOP_ONCE | EVLOOP_NONBLOCK);
             } else {
                 ourl->ip = strdup(itr->second.c_str());
                 ourl_queue.push(ourl);
@@ -79,6 +85,8 @@ void * urlparser(void *arg)
         }
 
     }
+    //evdns_base_free(dnsbase, 0);
+    //event_base_free(base);
     return NULL;
 }
 
@@ -114,6 +122,17 @@ static Url * spliturl(char *url)
         *p = '\0';
         ourl->domain = url;
         ourl->path = p+1;
+    }
+    // port
+    p = rindex(ourl->domain, ':');
+    if (p != NULL) {
+        *p = '\0';
+        ourl->port = atoi(p+1);
+        if (ourl->port == 0)
+            ourl->port = 80;
+
+    } else {
+        ourl->port = 80;
     }
     return ourl;
 }
@@ -153,6 +172,11 @@ static char * url_normalized(char *url)
     }
 
     return url;
+}
+
+int is_ourlqueue_empty() 
+{
+    return ourl_queue.empty();
 }
 
 
