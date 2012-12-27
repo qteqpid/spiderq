@@ -89,8 +89,10 @@ void * recvResponse(void * arg)
     }
 
     char buffer[1024];
-    int i, len = 0, n;
+    int i, len = 0, n, trunc_head = 0;
     int str_pos = 0;
+    char * body_ptr = NULL;
+
     while(1) {
         n = read(narg->fd, buffer+len, 1023-len);
         if (n < 0) {
@@ -110,6 +112,23 @@ void * recvResponse(void * arg)
         } else {
             len += n;
             buffer[len] = '\0';
+
+            if (!trunc_head) {
+                if ((body_ptr = strstr(buffer, "\r\n\r\n")) != NULL) {
+                    body_ptr += 4;
+                    for (i = 0; *body_ptr; i++) {
+                        buffer[i] = *body_ptr;
+                        body_ptr++;
+                    }
+                    buffer[i] = '\0';
+                    len = i;
+                    trunc_head = 1;
+                } else {
+                    len = 0;
+                }
+                continue;
+            }
+
             str_pos = extract_url(buffer, narg->url->domain);
             char *p = rindex(buffer, ' ');
             if (p == NULL) {
