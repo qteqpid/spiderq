@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <pthread.h>
 #include <errno.h>
 #include <regex.h>
 #include <fcntl.h>
@@ -39,7 +40,7 @@ int sendRequest(int fd, void *arg)
     char request[1024] = {0};
     Url *url = (Url *)arg;
 
-    sprintf(request, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", url->path, url->domain);
+    sprintf(request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: keep-alive\r\nReferer: %s\r\n\r\n", url->path, url->domain, url->domain);
 
     need = strlen(request);
     begin = 0;
@@ -47,9 +48,11 @@ int sendRequest(int fd, void *arg)
         n = write(fd, request+begin, need);
         if (n <= 0) {
             if (errno == EAGAIN) { //write buffer full, delay retry
+                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d recv EAGAIN", pthread_self());
                 usleep(1000);
                 continue;
             }
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d recv ERROR: %d", pthread_self(), n);
             free_url(url);
             close(fd);
             return -1;
@@ -60,7 +63,7 @@ int sendRequest(int fd, void *arg)
     return 0;
 }
 
-void set_noblock(int fd)
+void set_nonblocking(int fd)
 {
     int flag;
     if ((flag = fcntl(fd, F_GETFL)) < 0) {

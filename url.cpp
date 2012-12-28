@@ -105,7 +105,7 @@ static void dns_callback(int result, char type, int count, int ttl, void *addres
         char * ip = inet_ntoa(addrs[0]);
         SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Dns resolve OK: %s -> %s", ourl->domain, ip);
         host_ip_map[ourl->domain] = strdup(ip);
-        ourl->ip = ip;
+        ourl->ip = strdup(ip);
         ourl_queue.push(ourl);
     }
     event_loopexit(NULL); // not safe for multithreads 

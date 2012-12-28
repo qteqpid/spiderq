@@ -31,8 +31,8 @@ int main(int argc, void *argv[])
 
     /* test */
     //seed = "http://www.blue.com";
-    //seed = "http://www.imeiding.com";
-    seed = "http://trac.instreet.cn:81";
+    seed = "http://www.imeiding.com";
+    //seed = "http://trac.instreet.cn:81";
     push_surlqueue(seed);
 
     /* create a thread for parse surl to ourl */
@@ -61,11 +61,13 @@ int main(int argc, void *argv[])
             exit(1);
         }
         
-        set_noblock(sockfd);
+        set_nonblocking(sockfd);
 
         if ((sock_rv = sendRequest(sockfd, ourl)) < 0) {
             SPIDER_LOG(SPIDER_LEVEL_ERROR, "Send socket request fail: %s", ourl->ip);
             exit(1);
+        } else {
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Send socket request success: %s", ourl->ip);
         }
 
         evso_arg * arg = (evso_arg *)calloc(1, sizeof(evso_arg));
@@ -79,12 +81,29 @@ int main(int argc, void *argv[])
     int n, i;
     while(1) {
         n = epoll_wait(g_epfd, events, 10, 2000);
+            printf("epoll:%d\n",n);
+            fflush(stdout);
         for (i = 0; i < n; i++) {
             evso_arg * arg = (evso_arg *)(events[i].data.ptr);
+            if ((events[i].events & EPOLLERR) ||
+                (events[i].events & EPOLLHUP) ||
+                (!(events[i].events & EPOLLIN))) {
+                SPIDER_LOG(SPIDER_LEVEL_WARN, "epoll fail, close socket %d",arg->fd);
+                close(arg->fd);
+                continue;
+            }
+            /* I don't know why epoll_wait return the same socket event multi times
+             * so I have to del event here
+             */
+            epoll_ctl(g_epfd, EPOLL_CTL_DEL, arg->fd, &events[i]); /* del event */
+
+            printf("hello epoll:event=%d\n",events[i].events);
+            fflush(stdout);
             createThread(recvResponse, arg, NULL, NULL);
         }
     }
 
+    close(g_epfd);
     return 0;
 }
 

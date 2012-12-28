@@ -3,7 +3,7 @@
 
 extern int buildConnect(int *fd, char *ip, int port);
 extern int sendRequest(int fd, void *arg);
-extern void set_noblock(int fd);
+extern void set_nonblocking(int fd);
 extern void * recvResponse(void *arg);
 
 #endif
