@@ -48,7 +48,6 @@ int sendRequest(int fd, void *arg)
         n = write(fd, request+begin, need);
         if (n <= 0) {
             if (errno == EAGAIN) { //write buffer full, delay retry
-                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d recv EAGAIN", pthread_self());
                 usleep(1000);
                 continue;
             }
@@ -99,11 +98,12 @@ void * recvResponse(void * arg)
     while(1) {
         n = read(narg->fd, buffer+len, 1023-len);
         if (n < 0) {
-            if (errno == EAGAIN) { 
+            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) { 
                 /**
                  * TODO: Why always recv EAGAIN?
+                 * should we deal EINTR
                  */
-                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d meet EAGAIN, sleep", pthread_self());
+                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d meet EAGAIN or EWOULDBLOCK, sleep", pthread_self());
                 usleep(1000);
                 continue;
             } 
