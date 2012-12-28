@@ -99,7 +99,11 @@ void * recvResponse(void * arg)
     while(1) {
         n = read(narg->fd, buffer+len, 1023-len);
         if (n < 0) {
-            if (errno == EAGAIN) {
+            if (errno == EAGAIN) { 
+                /**
+                 * TODO: Why always recv EAGAIN?
+                 */
+                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d meet EAGAIN, sleep", pthread_self());
                 usleep(1000);
                 continue;
             } 
@@ -157,7 +161,9 @@ void * recvResponse(void * arg)
         }
     }
 
+    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %s end", pthread_self());
     free(fn);
+    close(narg->fd);
     free_url(narg->url);
     close(fd);
     return NULL;
@@ -187,8 +193,11 @@ static int extract_url(char *str, char *domain)
         strncpy(tmp, p, len);
         tmp[len] = '\0';
         char *url = attach_domain(tmp, domain);
-        if (url != NULL)
+        if (url != NULL) {
+            /* TODO: Why not url ? */
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "extract url:%s\n", url);
             push_surlqueue(url);
+        }
         p = p + len;
     }
 
