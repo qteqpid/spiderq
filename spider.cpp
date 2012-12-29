@@ -88,7 +88,7 @@ int main(int argc, void *argv[])
 
             printf("hello epoll:event=%d\n",events[i].events);
             fflush(stdout);
-            create_thread(recvResponse, arg, NULL, NULL);
+            create_thread(recv_response, arg, NULL, NULL);
         }
     }
 
@@ -111,14 +111,14 @@ int attach_epoll_task()
 
         /* connect socket and get sockfd */
         int sockfd;
-        if ((sock_rv = buildConnect(&sockfd, ourl->ip, ourl->port)) < 0) {
+        if ((sock_rv = build_connect(&sockfd, ourl->ip, ourl->port)) < 0) {
             SPIDER_LOG(SPIDER_LEVEL_WARN, "Build socket connect fail: %s", ourl->ip);
 	    return -1;
         }
         
         set_nonblocking(sockfd);
 
-        if ((sock_rv = sendRequest(sockfd, ourl)) < 0) {
+        if ((sock_rv = send_request(sockfd, ourl)) < 0) {
             SPIDER_LOG(SPIDER_LEVEL_WARN, "Send socket request fail: %s", ourl->ip);
 	    return -1;
         } else {

@@ -8,7 +8,7 @@
 
 static const char * HREF_PATTERN = "href=\"\\s*\\([^ >\"]*\\)\\s*\"";
 
-int buildConnect(int *fd, char *ip, int port)
+int build_connect(int *fd, char *ip, int port)
 {
     struct sockaddr_in server_addr;
     bzero(&server_addr, sizeof(struct sockaddr_in));
@@ -30,7 +30,7 @@ int buildConnect(int *fd, char *ip, int port)
     return 0;
 }
 
-int sendRequest(int fd, void *arg)
+int send_request(int fd, void *arg)
 {
     int need, begin, n;
     char request[1024] = {0};
@@ -75,7 +75,7 @@ void set_nonblocking(int fd)
     }
 }
 
-void * recvResponse(void * arg)
+void * recv_response(void * arg)
 {
     begin_thread();
 
