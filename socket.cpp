@@ -40,7 +40,7 @@ int sendRequest(int fd, void *arg)
     char request[1024] = {0};
     Url *url = (Url *)arg;
 
-    sprintf(request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: keep-alive\r\nReferer: %s\r\n\r\n", url->path, url->domain, url->domain);
+    sprintf(request, "GET /%s HTTP/1.0\r\nHost: %s\r\nConnection: keep-alive\r\nReferer: %s\r\n\r\n", url->path, url->domain, url->domain);
 
     need = strlen(request);
     begin = 0;
@@ -111,9 +111,10 @@ void * recvResponse(void * arg)
             break;
 
         } else if (n == 0) {
-            if (len > 0)
+            if (len > 0) {
+            	extract_url(buffer, narg->url->domain);
                 write(fd, buffer, len);
-
+	    }
             break;
 
         } else {
@@ -161,7 +162,7 @@ void * recvResponse(void * arg)
         }
     }
 
-    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %s end", pthread_self());
+    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d end", pthread_self());
     free(fn);
     close(narg->fd);
     free_url(narg->url);
@@ -238,11 +239,13 @@ static char * url2fn(const Url * url)
     int i = 0;
     int l1 = strlen(url->domain);
     int l2 = strlen(url->path);
-    char *fn = (char *)malloc(l1+l2+1);
+    char *fn = (char *)malloc(l1+l2+2);
     
     for (i = 0; i < l1; i++)
         fn[i] = url->domain[i];
     
+    fn[l1++] = '_';
+
     for (i = 0; i < l2; i++)
         fn[l1+i] = (url->path[i] == '/' ? '_' : url->path[i]);
 

@@ -13,7 +13,7 @@ static void dns_callback(int result, char type, int count, int ttl, void *addres
 static Url * spliturl(char *url);
 static char * url_normalized(char *url);
 static int iscrawled(const char * url);
-static char * nake_path = "/";
+//static char * nake_path = "/";
 
 void push_surlqueue(char * url)
 {
@@ -117,7 +117,7 @@ static Url * spliturl(char *url)
     char *p = index(url, '/');
     if (p == NULL) {
         ourl->domain = url;
-        ourl->path = strdup(nake_path);
+        ourl->path = url + strlen(url); //strdup(nake_path);
     } else {
         *p = '\0';
         ourl->domain = url;
@@ -183,7 +183,7 @@ int is_ourlqueue_empty()
 void free_url(Url * ourl)
 {
     free(ourl->domain);
-    free(ourl->path);
+    //free(ourl->path);
     free(ourl->ip);
     free(ourl);
 }
