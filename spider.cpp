@@ -28,6 +28,7 @@ int main(int argc, void *argv[])
     struct epoll_event events[10];
 
     /* parse opt */
+    g_max_thread_num = 10;
 
     chdir("download"); /* change wd to download directory */
 
@@ -36,8 +37,8 @@ int main(int argc, void *argv[])
     /* test */
     //seed = "http://www.blue.com";
     //seed = "http://trac.instreet.cn:81";
-    //seed = "http://www.imeiding.com/";
-    seed = "http://www.imeiding.com/test.php";
+    seed = "http://www.imeiding.com/";
+    //seed = "http://www.imeiding.com/test.php";
     push_surlqueue(seed);
 //    push_surlqueue(seed);
 

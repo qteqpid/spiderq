@@ -30,7 +30,7 @@ void begin_thread()
 {
     pthread_mutex_lock(&gctn_lock);	
     g_cur_thread_num++; 
-    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Begin Thread %lu, cur_thread_num=%d", pthread_self(), g_cur_thread_num);
+    SPIDER_LOG(SPIDER_LEVEL_INFO, "Begin Thread %lu, cur_thread_num=%d", pthread_self(), g_cur_thread_num);
     pthread_mutex_unlock(&gctn_lock);	
 }
 
@@ -38,7 +38,7 @@ void end_thread()
 {
     pthread_mutex_lock(&gctn_lock);	
     g_cur_thread_num--; 
-    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "End Thread %lu, cur_thread_num=%d", pthread_self(), g_cur_thread_num);
+    SPIDER_LOG(SPIDER_LEVEL_INFO, "End Thread %lu, cur_thread_num=%d", pthread_self(), g_cur_thread_num);
     int left = g_max_thread_num - g_cur_thread_num;
     if (left == 1) {
 	/* can start one thread */

@@ -17,12 +17,15 @@ static void dns_callback(int result, char type, int count, int ttl, void *addres
 static int is_bin_url(char *url);
 
 pthread_mutex_t oq_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t sq_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void push_surlqueue(char * url)
 {
     if (url != NULL) {
+    	pthread_mutex_lock(&sq_lock);
         char * nurl = strdup(url);
         surl_queue.push(nurl);
+    	pthread_mutex_unlock(&sq_lock);
     }
 }
 
@@ -55,6 +58,14 @@ int is_ourlqueue_empty()
     return val;
 }
 
+int is_surlqueue_empty() 
+{
+    pthread_mutex_lock(&sq_lock);
+    int val = surl_queue.empty();
+    pthread_mutex_unlock(&sq_lock);
+    return val;
+}
+
 void * urlparser(void *arg)
 {
     char *url = NULL;
@@ -65,12 +76,14 @@ void * urlparser(void *arg)
     //event_base_loop(base,EVLOOP_NONBLOCK);
 
     while(1) {
-        while (surl_queue.empty()) {
+        while (is_surlqueue_empty()) {
             SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Surl_queue is empty, sleep 0.5s");
             usleep(500000); /* sleep 0.5s */
         }
+    	pthread_mutex_lock(&sq_lock);
         url = surl_queue.front();
         surl_queue.pop();
+    	pthread_mutex_unlock(&sq_lock);
 
         /* normalize url */
         if ((url = url_normalized(url)) == NULL) {

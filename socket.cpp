@@ -126,6 +126,14 @@ void * recvResponse(void * arg)
             buffer[len] = '\0';
 
             if (!trunc_head) {
+		/* filter out !(Content-Type: text/html)  */
+                if ((body_ptr = strstr(buffer, "Content-Type: ")) != NULL) {
+			if (strncmp(body_ptr+14, "text/html", 9) != 0) {
+                		SPIDER_LOG(SPIDER_LEVEL_INFO, "Content-Type is not text/html");
+				goto leave;
+			}
+		}
+
                 if ((body_ptr = strstr(buffer, "\r\n\r\n")) != NULL) {
                     body_ptr += 4;
                     for (i = 0; *body_ptr; i++) {

@@ -9,7 +9,7 @@
 /* macros */
 #define MAX_MESG_LEN   1024
 
-#define SPIDER_LOG_LEVEL   0
+#define SPIDER_LOG_LEVEL   1
 #define SPIDER_LEVEL_DEBUG 0
 #define SPIDER_LEVEL_INFO  1
 #define SPIDER_LEVEL_WARN  2
