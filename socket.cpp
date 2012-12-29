@@ -36,7 +36,12 @@ int sendRequest(int fd, void *arg)
     char request[1024] = {0};
     Url *url = (Url *)arg;
 
-    sprintf(request, "GET /%s HTTP/1.0\r\nHost: %s\r\nConnection: keep-alive\r\nReferer: %s\r\n\r\n", url->path, url->domain, url->domain);
+    sprintf(request, "GET /%s HTTP/1.0\r\n"
+                     "Host: %s\r\n"
+                     "Accept: */*\r\n"
+                     "Connection: Keep-Alive\r\n"
+                     "User-Agent: Mozilla/5.0 (compatible; Qteqpidspider/1.0;)\r\n"
+                     "Referer: %s\r\n\r\n", url->path, url->domain, url->domain);
 
     need = strlen(request);
     begin = 0;
@@ -103,7 +108,7 @@ void * recvResponse(void * arg)
                  * should we deal EINTR
                  */
                 SPIDER_LOG(SPIDER_LEVEL_WARN, "thread %lu meet EAGAIN or EWOULDBLOCK, sleep", pthread_self());
-                usleep(1000);
+                usleep(10000);
                 continue;
             } 
             SPIDER_LOG(SPIDER_LEVEL_WARN, "read socket to %s fail: %s", fn, strerror(errno));
