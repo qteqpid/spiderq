@@ -1,10 +1,10 @@
 #ifndef SPIDER_H
 #define SPIDER_H
 
-#include <pthread.h>
 #include <stdarg.h>
 #include "url.h"
 #include "socket.h"
+#include "threads.h"
 
 /* macros */
 #define MAX_MESG_LEN   1024
@@ -24,15 +24,19 @@ static const char * LOG_STR[] = {
 
 #define SPIDER_LOG(level, format, ...) do{ \
     if (level >= SPIDER_LOG_LEVEL) {\
+	time_t now = time(NULL); \
         char msg[MAX_MESG_LEN]; \
+	char buf[32]; \
         sprintf(msg, format, ##__VA_ARGS__); \
-        fprintf(stdout, "[%s] %s\n", LOG_STR[level], msg); \
+	strftime(buf, sizeof(buf), "%Y%m%d %H:%M:%S", localtime(&now)); \
+        fprintf(stdout, "[%s] [%s] %s\n", buf, LOG_STR[level], msg); \
         fflush(stdout); \
+    } \
+    if (level == SPIDER_LEVEL_ERROR) {\
+	exit(-1); \
     } \
 } while(0)
 
-
-
-int CreateThread(void *(*start_routine) (void *), void *arg, pthread_t * thread, pthread_attr_t * pAttr);
+extern int attach_epoll_task();
 
 #endif

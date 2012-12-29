@@ -9,11 +9,14 @@ static queue<Url *> ourl_queue;
 /* ? */
 static map<string, string> host_ip_map;
 
-static void dns_callback(int result, char type, int count, int ttl, void *addresses, void *arg);
 static Url * spliturl(char *url);
-static char * url_normalized(char *url);
 static int iscrawled(char * url);
+static char * url_normalized(char *url);
+static char * attach_domain(char *url, const char *domain);
+static void dns_callback(int result, char type, int count, int ttl, void *addresses, void *arg);
+static int is_bin_url(char *url);
 
+pthread_mutex_t oq_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void push_surlqueue(char * url)
 {
@@ -25,13 +28,31 @@ void push_surlqueue(char * url)
 
 Url * pop_ourlqueue()
 {
+    pthread_mutex_lock(&oq_lock);
     if (!ourl_queue.empty()) {
         Url * url = ourl_queue.front();
         ourl_queue.pop();
+    	pthread_mutex_unlock(&oq_lock);
         return url;
     } else {
+    	pthread_mutex_unlock(&oq_lock);
         return NULL;
     }
+}
+
+static void push_ourlqueue(Url * ourl)
+{
+    pthread_mutex_lock(&oq_lock);
+    ourl_queue.push(ourl);
+    pthread_mutex_unlock(&oq_lock);
+}
+
+int is_ourlqueue_empty() 
+{
+    pthread_mutex_lock(&oq_lock);
+    int val = ourl_queue.empty();
+    pthread_mutex_unlock(&oq_lock);
+    return val;
 }
 
 void * urlparser(void *arg)
@@ -45,7 +66,7 @@ void * urlparser(void *arg)
 
     while(1) {
         while (surl_queue.empty()) {
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "surl_queue is empty, sleep 0.5s");
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Surl_queue is empty, sleep 0.5s");
             usleep(500000); /* sleep 0.5s */
         }
         url = surl_queue.front();
@@ -58,12 +79,12 @@ void * urlparser(void *arg)
         }
 
         if (iscrawled(url)) { /* if is crawled */
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Url is crawled: %s", url);
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I seen this url: %s", url);
             free(url);
             url = NULL;
             continue;
         } else {
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Crawling url: %s", url);
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I want this url: %s", url);
             /* spilt url into Url object */
             ourl = spliturl(url);
    
@@ -81,7 +102,7 @@ void * urlparser(void *arg)
                 //event_base_loop(base, EVLOOP_ONCE | EVLOOP_NONBLOCK);
             } else {
                 ourl->ip = strdup(itr->second.c_str());
-                ourl_queue.push(ourl);
+		push_ourlqueue(ourl);
             }
         }
 
@@ -107,19 +128,43 @@ int extract_url(regex_t *re, char *str, char *domain)
         char *tmp = (char *)calloc(len+1, 1);
         strncpy(tmp, p, len);
         tmp[len] = '\0';
+        p = p + len + (matchptr[0].rm_eo - matchptr[1].rm_eo);
+	
+	/* exclude binary file */
+	if (is_bin_url(tmp)) {
+	    free(tmp);
+	    continue;
+	}
+	
         char *url = attach_domain(tmp, domain);
         if (url != NULL) {
             /* TODO: Why not url ? */
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "find url:%s", url);
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I find a url: %s", url);
             push_surlqueue(url);
         }
-        p = p + len;
     }
 
-    return (p == str ? 0 : (p-str+1));
+    return (p-str);
 }
 
-char * attach_domain(char *url, const char *domain)
+/* if url refer to binary file
+ * image: jpg|jpeg|gif|png|ico|bmp
+ * flash: swf
+ */
+static char * BIN_SUFFIXES = ".jpg.jpeg.gif.png.ico.bmp.swf";
+static int is_bin_url(char *url)
+{
+    char *p = NULL;
+    if ((p = strrchr(url, '.')) != NULL) {
+	if (strstr(BIN_SUFFIXES, p) == NULL)
+	    return 0;
+	else
+	    return 1;
+    }
+    return 0;
+}
+
+static char * attach_domain(char *url, const char *domain)
 {
     if (url == NULL)
         return NULL;
@@ -184,7 +229,7 @@ static void dns_callback(int result, char type, int count, int ttl, void *addres
         SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Dns resolve OK: %s -> %s", ourl->domain, ip);
         host_ip_map[ourl->domain] = strdup(ip);
         ourl->ip = strdup(ip);
-        ourl_queue.push(ourl);
+	push_ourlqueue(ourl);
     }
     event_loopexit(NULL); // not safe for multithreads 
 }
@@ -192,7 +237,7 @@ static void dns_callback(int result, char type, int count, int ttl, void *addres
 static Url * spliturl(char *url)
 {
     Url *ourl = (Url *)calloc(1, sizeof(Url));
-    char *p = index(url, '/');
+    char *p = strchr(url, '/');
     if (p == NULL) {
         ourl->domain = url;
         ourl->path = url + strlen(url); 
@@ -202,7 +247,7 @@ static Url * spliturl(char *url)
         ourl->path = p+1;
     }
     // port
-    p = rindex(ourl->domain, ':');
+    p = strrchr(ourl->domain, ':');
     if (p != NULL) {
         *p = '\0';
         ourl->port = atoi(p+1);
@@ -255,11 +300,6 @@ static char * url_normalized(char *url)
     }
 
     return url;
-}
-
-int is_ourlqueue_empty() 
-{
-    return ourl_queue.empty();
 }
 
 

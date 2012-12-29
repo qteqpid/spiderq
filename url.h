@@ -35,7 +35,6 @@ extern void * urlparser(void * arg);
 extern void free_url(Url * ourl);
 extern int is_ourlqueue_empty();
 extern int extract_url(regex_t *re, char *str, char *domain);
-extern char * attach_domain(char *url, const char *domain);
 extern char * url2fn(const Url * url);
 
 #endif

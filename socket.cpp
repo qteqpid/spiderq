@@ -4,9 +4,9 @@
 #include <fcntl.h>
 #include "url.h"
 #include "socket.h"
-#include "spider.h"
+#include "threads.h"
 
-static const char * HREF_PATTERN = "href=\"\\s*\\([^>\"]*\\)\"";
+static const char * HREF_PATTERN = "href=\"\\s*\\([^ >\"]*\\)\\s*\"";
 
 int buildConnect(int *fd, char *ip, int port)
 {
@@ -47,7 +47,7 @@ int sendRequest(int fd, void *arg)
                 usleep(1000);
                 continue;
             }
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %lu recv ERROR: %d", pthread_self(), n);
+            SPIDER_LOG(SPIDER_LEVEL_WARN, "Thread %lu recv ERROR: %d", pthread_self(), n);
             free_url(url);
             close(fd);
             return -1;
@@ -62,38 +62,36 @@ void set_nonblocking(int fd)
 {
     int flag;
     if ((flag = fcntl(fd, F_GETFL)) < 0) {
-        perror("fcntl getfl fail");
-        exit(1);
+        SPIDER_LOG(SPIDER_LEVEL_ERROR, "fcntl getfl fail");
     }
     flag |= O_NONBLOCK;
     if ((flag = fcntl(fd, F_SETFL, flag)) < 0) {
-        perror("fcntl setfl fail");
-        exit(1);
+        SPIDER_LOG(SPIDER_LEVEL_ERROR, "fcntl setfl fail");
     }
 }
 
 void * recvResponse(void * arg)
 {
+    begin_thread();
+
+    int fd;
+    int str_pos = 0;
+    int i, len = 0, n, trunc_head = 0;
+    char buffer[1024];
+    char * body_ptr = NULL;
     evso_arg * narg = (evso_arg *)arg;
     char * fn = url2fn(narg->url);
-    int fd;
     regex_t re;
     
-    if ((fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
-        SPIDER_LOG(SPIDER_LEVEL_WARN, "open file for writing fail: %s", fn);
-        free(fn);
-        free_url(narg->url);
-        close(fd);
-        return NULL;
+    if (regcomp(&re, HREF_PATTERN, 0) != 0) {// 编译失败
+        SPIDER_LOG(SPIDER_LEVEL_ERROR, "compile regex error");
     }
 
-    char buffer[1024];
-    int i, len = 0, n, trunc_head = 0;
-    int str_pos = 0;
-    char * body_ptr = NULL;
-    if (regcomp(&re, HREF_PATTERN, 0) != 0) {// 编译失败
-        SPIDER_LOG(SPIDER_LEVEL_WARN, "compile regex error");
-	exit(1);
+    SPIDER_LOG(SPIDER_LEVEL_INFO, "Crawling url: %s/%s", narg->url->domain, narg->url->path);
+
+    if ((fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
+        SPIDER_LOG(SPIDER_LEVEL_WARN, "open file for writing fail: %s", fn);
+	goto leave;
     }
 
     while(1) {
@@ -104,7 +102,7 @@ void * recvResponse(void * arg)
                  * TODO: Why always recv EAGAIN?
                  * should we deal EINTR
                  */
-                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %lu meet EAGAIN or EWOULDBLOCK, sleep", pthread_self());
+                SPIDER_LOG(SPIDER_LEVEL_WARN, "thread %lu meet EAGAIN or EWOULDBLOCK, sleep", pthread_self());
                 usleep(1000);
                 continue;
             } 
@@ -163,12 +161,17 @@ void * recvResponse(void * arg)
         }
     }
 
-    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %lu end", pthread_self());
+leave:
     free(fn);
-    close(narg->fd);
-    free_url(narg->url);
-    close(fd);
-    regfree(&re);
+    close(fd); /* close file */
+    close(narg->fd); /* close socket */
+    free_url(narg->url); /* free Url object */
+    regfree(&re); /* free regex object */
+
+    /* wait for dns to prepare new ourl */
+    if (is_ourlqueue_empty())
+    	usleep(1000000);
+    end_thread();
     return NULL;
 }
 
