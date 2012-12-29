@@ -13,7 +13,7 @@ static void dns_callback(int result, char type, int count, int ttl, void *addres
 static Url * spliturl(char *url);
 static char * url_normalized(char *url);
 static int iscrawled(char * url);
-//static char * nake_path = "/";
+
 
 void push_surlqueue(char * url)
 {
@@ -63,6 +63,7 @@ void * urlparser(void *arg)
             url = NULL;
             continue;
         } else {
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Crawling url: %s", url);
             /* spilt url into Url object */
             ourl = spliturl(url);
    
@@ -88,6 +89,83 @@ void * urlparser(void *arg)
     //evdns_base_free(dnsbase, 0);
     //event_base_free(base);
     return NULL;
+}
+
+/*
+ * 返回最后找到的链接的下一个下标,if not found return 0;
+ */
+int extract_url(regex_t *re, char *str, char *domain)
+{
+    const size_t nmatch = 2;
+    regmatch_t matchptr[nmatch];
+    int len;
+
+    char *p = str;
+    while (regexec(re, p, nmatch, matchptr, 0) != REG_NOMATCH) {
+        len = (matchptr[1].rm_eo - matchptr[1].rm_so);
+        p = p + matchptr[1].rm_so;
+        char *tmp = (char *)calloc(len+1, 1);
+        strncpy(tmp, p, len);
+        tmp[len] = '\0';
+        char *url = attach_domain(tmp, domain);
+        if (url != NULL) {
+            /* TODO: Why not url ? */
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "find url:%s", url);
+            push_surlqueue(url);
+        }
+        p = p + len;
+    }
+
+    return (p == str ? 0 : (p-str+1));
+}
+
+char * attach_domain(char *url, const char *domain)
+{
+    if (url == NULL)
+        return NULL;
+
+
+    if (strncmp(url, "http", 4) == 0) {
+        return url;
+
+    } else if (*url == '/') {
+        int i;
+        int ulen = strlen(url);
+        int dlen = strlen(domain);
+        char *tmp = (char *)malloc(ulen+dlen+1);
+        for (i = 0; i < dlen; i++)
+            tmp[i] = domain[i];
+        for (i = 0; i < ulen; i++)
+            tmp[i+dlen] = url[i];
+        tmp[ulen+dlen] = '\0';
+        free(url);
+        return tmp;
+         
+    } else {
+        //do nothing
+        free(url);
+        return NULL;
+    }
+}
+
+char * url2fn(const Url * url)
+{
+    int i = 0;
+    int l1 = strlen(url->domain);
+    int l2 = strlen(url->path);
+    char *fn = (char *)malloc(l1+l2+2);
+    
+    for (i = 0; i < l1; i++)
+        fn[i] = url->domain[i];
+    
+    fn[l1++] = '_';
+
+    for (i = 0; i < l2; i++)
+        fn[l1+i] = (url->path[i] == '/' ? '_' : url->path[i]);
+
+    fn[l1+l2] = '\0';
+
+    return fn;
 }
 
 static int iscrawled(char * url) {
@@ -117,7 +195,7 @@ static Url * spliturl(char *url)
     char *p = index(url, '/');
     if (p == NULL) {
         ourl->domain = url;
-        ourl->path = url + strlen(url); //strdup(nake_path);
+        ourl->path = url + strlen(url); 
     } else {
         *p = '\0';
         ourl->domain = url;
@@ -141,7 +219,12 @@ static char * url_normalized(char *url)
 {
     if (url == NULL) return NULL;
 
+    /* rtrim url */
     int len = strlen(url);
+    while (len && isspace(url[len-1]))
+	len--;
+    url[len] = '\0';
+
     if (len == 0) {
         free(url);
         return NULL;
@@ -162,8 +245,8 @@ static char * url_normalized(char *url)
     }
 
     /* remove '/' at end of url if have */
-    if (url[len] == '/') {
-        url[len--] = '\0';
+    if (url[len-1] == '/') {
+        url[--len] = '\0';
     }
 
     if (len > MAX_LINK_LEN) {

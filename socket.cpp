@@ -1,16 +1,12 @@
 #include <sys/socket.h>
 #include <pthread.h>
 #include <errno.h>
-#include <regex.h>
 #include <fcntl.h>
 #include "url.h"
 #include "socket.h"
 #include "spider.h"
 
-
-static int extract_url(char *str, char *domain);
-static char * attach_domain(char *url, const char *domain);
-static char * url2fn(const Url * url);
+static const char * HREF_PATTERN = "href=\"\\s*\\([^>\"]*\\)\"";
 
 int buildConnect(int *fd, char *ip, int port)
 {
@@ -81,8 +77,9 @@ void * recvResponse(void * arg)
     evso_arg * narg = (evso_arg *)arg;
     char * fn = url2fn(narg->url);
     int fd;
+    regex_t re;
     
-    if ((fd = open(fn, O_WRONLY | O_CREAT | O_APPEND, 0644)) < 0) {
+    if ((fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
         SPIDER_LOG(SPIDER_LEVEL_WARN, "open file for writing fail: %s", fn);
         free(fn);
         free_url(narg->url);
@@ -94,6 +91,10 @@ void * recvResponse(void * arg)
     int i, len = 0, n, trunc_head = 0;
     int str_pos = 0;
     char * body_ptr = NULL;
+    if (regcomp(&re, HREF_PATTERN, 0) != 0) {// 编译失败
+        SPIDER_LOG(SPIDER_LEVEL_WARN, "compile regex error");
+	exit(1);
+    }
 
     while(1) {
         n = read(narg->fd, buffer+len, 1023-len);
@@ -112,7 +113,7 @@ void * recvResponse(void * arg)
 
         } else if (n == 0) {
             if (len > 0) {
-            	extract_url(buffer, narg->url->domain);
+            	extract_url(&re, buffer, narg->url->domain);
                 write(fd, buffer, len);
 	    }
             break;
@@ -137,7 +138,7 @@ void * recvResponse(void * arg)
                 continue;
             }
 
-            str_pos = extract_url(buffer, narg->url->domain);
+            str_pos = extract_url(&re, buffer, narg->url->domain);
             char *p = rindex(buffer, ' ');
             if (p == NULL) {
                 // 没有空格，应该也不会有href被截断
@@ -167,89 +168,7 @@ void * recvResponse(void * arg)
     close(narg->fd);
     free_url(narg->url);
     close(fd);
+    regfree(&re);
     return NULL;
 }
 
-/*
- * 返回最后找到的链接的下一个下标
- */
-static int extract_url(char *str, char *domain)
-{
-    const char * pattern = "href=\"([^ >\"]+)\"";
-    regex_t re;
-    const size_t nmatch = 2;
-    regmatch_t matchptr[nmatch];
-    int len;
-
-    if (regcomp(&re, pattern, 0) != 0) {// 编译失败
-        perror("compile regex error");
-        exit(1);
-    }
-
-    char *p = str;
-    while (regexec(&re, p, nmatch, matchptr, 0) != REG_NOMATCH) {
-        len = (matchptr[1].rm_eo - matchptr[1].rm_so) + 1;
-        p = p + matchptr[1].rm_so;
-        char *tmp = (char *)calloc(len+1, 1);
-        strncpy(tmp, p, len);
-        tmp[len] = '\0';
-        char *url = attach_domain(tmp, domain);
-        if (url != NULL) {
-            /* TODO: Why not url ? */
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "extract url:%s\n", url);
-            push_surlqueue(url);
-        }
-        p = p + len;
-    }
-
-    return (p-str);
-}
-
-static char * attach_domain(char *url, const char *domain)
-{
-    if (url == NULL)
-        return NULL;
-
-
-    if (strncmp(url, "http", 4) == 0) {
-        return url;
-
-    } else if (*url == '/') {
-        int i;
-        int ulen = strlen(url);
-        int dlen = strlen(domain);
-        char *tmp = (char *)malloc(ulen+dlen+1);
-        for (i = 0; i < dlen; i++)
-            tmp[i] = domain[i];
-        for (i = 0; i < ulen; i++)
-            tmp[i+dlen] = url[i];
-        tmp[ulen+dlen] = '\0';
-        free(url);
-        return tmp;
-         
-    } else {
-        //do nothing
-        free(url);
-        return NULL;
-    }
-}
-
-static char * url2fn(const Url * url)
-{
-    int i = 0;
-    int l1 = strlen(url->domain);
-    int l2 = strlen(url->path);
-    char *fn = (char *)malloc(l1+l2+2);
-    
-    for (i = 0; i < l1; i++)
-        fn[i] = url->domain[i];
-    
-    fn[l1++] = '_';
-
-    for (i = 0; i < l2; i++)
-        fn[l1+i] = (url->path[i] == '/' ? '_' : url->path[i]);
-
-    fn[l1+l2] = '\0';
-
-    return fn;
-}
