@@ -4,6 +4,6 @@
 #include <unistd.h>
 #include <string.h>
 
-extern int search(const char *url);
+extern int search(char *url);
 
 #endif

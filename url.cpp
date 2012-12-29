@@ -12,7 +12,7 @@ static map<string, string> host_ip_map;
 static void dns_callback(int result, char type, int count, int ttl, void *addresses, void *arg);
 static Url * spliturl(char *url);
 static char * url_normalized(char *url);
-static int iscrawled(const char * url);
+static int iscrawled(char * url);
 //static char * nake_path = "/";
 
 void push_surlqueue(char * url)
@@ -90,7 +90,7 @@ void * urlparser(void *arg)
     return NULL;
 }
 
-static int iscrawled(const char * url) {
+static int iscrawled(char * url) {
     return search(url); /* use bloom filter algorithm */
 }
 

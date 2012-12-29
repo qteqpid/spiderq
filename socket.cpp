@@ -51,7 +51,7 @@ int sendRequest(int fd, void *arg)
                 usleep(1000);
                 continue;
             }
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d recv ERROR: %d", pthread_self(), n);
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %lu recv ERROR: %d", pthread_self(), n);
             free_url(url);
             close(fd);
             return -1;
@@ -103,7 +103,7 @@ void * recvResponse(void * arg)
                  * TODO: Why always recv EAGAIN?
                  * should we deal EINTR
                  */
-                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d meet EAGAIN or EWOULDBLOCK, sleep", pthread_self());
+                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %lu meet EAGAIN or EWOULDBLOCK, sleep", pthread_self());
                 usleep(1000);
                 continue;
             } 
@@ -162,7 +162,7 @@ void * recvResponse(void * arg)
         }
     }
 
-    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %d end", pthread_self());
+    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "thread %lu end", pthread_self());
     free(fn);
     close(narg->fd);
     free_url(narg->url);

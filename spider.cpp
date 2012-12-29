@@ -31,8 +31,10 @@ int main(int argc, void *argv[])
 
     /* test */
     //seed = "http://www.blue.com";
-    seed = "http://www.imeiding.com";
     //seed = "http://trac.instreet.cn:81";
+    seed = "http://www.imeiding.com";
+    push_surlqueue(seed);
+    seed = "http://www.imeiding.com/test.php";
     push_surlqueue(seed);
 
     /* create a thread for parse surl to ourl */

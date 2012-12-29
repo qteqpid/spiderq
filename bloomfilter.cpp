@@ -1,6 +1,11 @@
 #include "bloomfilter.h"
+#include "hashs.h"
+#include "md5.h"
+#include "crc32.h"
+#include "sha1.h"
+#include <stdlib.h>
 
-#define SALT_NUM 8
+#define HASH_FUNC_NUM 8
 #define BLOOM_SIZE 1000000
 #define BITSIZE_PER_BLOOM  32
 #define LIMIT   (BLOOM_SIZE * BITSIZE_PER_BLOOM)
@@ -13,26 +18,56 @@
  */
 static int bloom_table[BLOOM_SIZE] = {0};
 
-static const char * salt[SALT_NUM] = {"Dm", "VB", "ui", "LK", "uj", "RD", "we", "fc"};
-
-static unsigned int encrypt(const char *key, const char * s)
+static MD5_CTX md5;
+static SHA1_CONTEXT sha;  
+static unsigned int encrypt(char *key, unsigned int id)
 {
-    unsigned int val = 0;
-    char * str = crypt(key, s);
-    int len = strlen(str);
-    while(len--) {
-        val = ((val << 5) + val) + str[len]; /* times 33 */
-    }
-    return val;
+	unsigned int val = 0;
+
+	switch(id){
+		case 0:
+			val = times33(key); break;
+		case 1:
+			val = times31(key); break;
+		case 2:
+			val = aphash(key); break;
+		case 3:
+			val = hash16777619(key); break;
+		case 4:
+			val = mysqlhash(key); break;
+		case 5:
+			int i;
+			unsigned char decrypt[16];
+			MD5Init(&md5);
+			MD5Update(&md5, (unsigned char *)key, strlen(key));
+			MD5Final(&md5, decrypt);
+			for(i = 0; i < 16; i++)
+				val = (val << 5) + val + decrypt[i];
+			break;
+		case 6:
+			val = crc32((unsigned char *)key, strlen(key));
+			break;	
+		case 7:
+    			sha1_init(&sha);  
+		    	sha1_write(&sha, (unsigned char *)key, strlen(key));
+			sha1_final(&sha);
+    			for (i=0; i < 20; i++)  
+				val = (val << 5) + val + sha.buf[i];
+			break;
+		default:
+			// should not be here
+			abort();
+	}
+	return val;
 }
 
-int search(const char *url)
+int search(char *url)
 {
     unsigned int h, i, index, pos;
     int res = 0;
 
-    for (i = 0; i < SALT_NUM; i++) {
-        h = encrypt(url, salt[i]);
+    for (i = 0; i < HASH_FUNC_NUM; i++) {
+        h = encrypt(url, i);
         h %= LIMIT;
         index = h / BITSIZE_PER_BLOOM;
         pos = h % BITSIZE_PER_BLOOM;
@@ -41,5 +76,5 @@ int search(const char *url)
         else
             bloom_table[index] |= (0x80000000 >> pos);
     } 
-    return (res == SALT_NUM);
+    return (res == HASH_FUNC_NUM);
 }
