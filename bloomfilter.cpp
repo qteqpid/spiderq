@@ -5,7 +5,12 @@
 #define BITSIZE_PER_BLOOM  32
 #define LIMIT   (BLOOM_SIZE * BITSIZE_PER_BLOOM)
 
-
+/* 
+ * m=10n, k=8 when e=0.01 (m is bitsize, n is inputnum, k is hash_func num, e is error rate)
+ * here m = BLOOM_SIZE*BITSIZE_PER_BLOOM = 32,000,000 (bits)
+ * so n = m/10 = 3,200,000 (urls)
+ * enough for crawling a website
+ */
 static int bloom_table[BLOOM_SIZE] = {0};
 
 static const char * salt[SALT_NUM] = {"Dm", "VB", "ui", "LK", "uj", "RD", "we", "fc"};
