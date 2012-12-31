@@ -1,0 +1,49 @@
+#include "spider.h"
+#include "qstring.h"
+#include "confparser.h"
+
+Config * initconfig()
+{
+	Config *conf = (Config *)malloc(sizeof(Config));
+	conf->max_job_num = 10;
+	return conf;
+}
+
+void loadconfig(Config *conf)
+{
+	FILE *fp;
+	char buf[MAX_CONF_LEN+1];
+	int argc = 0;
+	char **argv = NULL;
+	int linenum = 0;
+	char *line = NULL;
+	const char *err = NULL;
+
+	if ((fp = fopen(CONF_FILE, "r")) == NULL) {
+		SPIDER_LOG(SPIDER_LEVEL_ERROR, "Can't load conf_file %s", CONF_FILE);	
+		exit(1);
+	} 
+
+	while (fgets(buf, MAX_CONF_LEN+1, fp) != NULL) {
+		linenum++;
+		line = strim(buf);
+		
+		if (line[0] == '#' || line[0] == '\0') continue;
+		argv = strsplit(line,'=',&argc,1);
+		if (argc == 2) {
+			if (strcasecmp(argv[0], "max_job_num") == 0) {
+				conf->max_job_num = atoi(argv[1]);
+			} else {
+				err = "Unknown directive"; goto conferr;
+			}
+		} else {
+			err = "directive must be 'key=value'"; goto conferr;
+		}
+		
+	}
+	return;
+
+conferr:
+	SPIDER_LOG(SPIDER_LEVEL_ERROR, "Bad directive in %s[line:%d] %s", CONF_FILE, linenum, err);	
+	exit(1);
+}

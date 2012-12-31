@@ -126,6 +126,8 @@ void * recv_response(void * arg)
             buffer[len] = '\0';
 
             if (!trunc_head) {
+		/* TODO: skip if status code is NOT 200 */
+		
 		/* filter out !(Content-Type: text/html)  */
                 if ((body_ptr = strstr(buffer, "Content-Type: ")) != NULL) {
 			if (strncmp(body_ptr+14, "text/html", 9) != 0) {

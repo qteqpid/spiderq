@@ -3,10 +3,12 @@
 #include <sys/resource.h>
 #include "spider.h"
 #include "threads.h"
+#include "confparser.h"
 
-static char *seed = NULL;
 int g_epfd;
-extern int g_max_thread_num;
+static char *seed = NULL;
+Config *g_conf;
+
 
 static int set_nofile(rlim_t limit);
 
@@ -28,7 +30,9 @@ int main(int argc, void *argv[])
     struct epoll_event events[10];
 
     /* parse opt */
-    g_max_thread_num = 10;
+    /* parse log */
+    g_conf = initconfig();
+    loadconfig(g_conf);
 
     chdir("download"); /* change wd to download directory */
 
@@ -59,9 +63,9 @@ int main(int argc, void *argv[])
 
     /* begin create epoll to run */
     int ourl_num = 0;
-    g_epfd = epoll_create(g_max_thread_num);
+    g_epfd = epoll_create(g_conf->max_job_num);
 
-    while(ourl_num++ < g_max_thread_num) {
+    while(ourl_num++ < g_conf->max_job_num) {
 	if (attach_epoll_task() < 0)
 	    break;
     }
