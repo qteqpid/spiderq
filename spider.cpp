@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <sys/epoll.h>
 #include <sys/resource.h>
+#include <getopt.h>
+#include <fcntl.h>
 #include "spider.h"
 #include "threads.h"
 #include "confparser.h"
@@ -11,32 +13,58 @@ Config *g_conf;
 
 
 static int set_nofile(rlim_t limit);
+static void daemonize();
+
+static void version()
+{
+    printf("Version: spiderq/1.0 by qteqpid\n");
+    exit(1);
+}
 
 static void usage()
 {
-    printf("Usage: ./spider -u <seed_url> [-i <pattern>] [-e <pattern>] [-m <num>]\n"
+    printf("Usage: ./spider [Options]\n"
             "\nOptions:\n"
             "  -h\t: this help\n"
-            "  -u\t: set seed url to crawl from\n"
-            "  -i\t: only crawl urls that satisfy. Comma seperated if you have more than one\n"
-            "  -e\t: opposite to -i option, so should NOT work with -i(NOT supported yet)\n"
-            "  -m\t: set max_num of crawling threads(NOT supported yet)\n"
-            "Example: ./spider -u www.imeiding.com -i www.imeiding.com/question\n\n");
+            "  -v\t: print spiderq's version\n"
+            "  -d\t: run program as a daemon process\n\n");
     exit(1);
 }
 
 int main(int argc, void *argv[]) 
 {
     struct epoll_event events[10];
+    int daemonized = 0;
+    char ch;
 
     /* parse opt */
+    while ((ch = getopt(argc, (char* const*)argv, "vhd")) != -1) {
+	switch(ch) {
+		case 'v':
+			version();
+			break;
+		case 'd':
+			daemonized = 1;
+			break;
+		case 'h':
+		case '?':
+		default:
+			usage();
+        }
+    }
+
     /* parse log */
     g_conf = initconfig();
     loadconfig(g_conf);
 
-    chdir("download"); /* change wd to download directory */
+    if (daemonized)
+	daemonize();
 
-    set_nofile(1024); /* set max value of fd num to 1024 */
+    /* change wd to download directory */
+    chdir("download"); 
+    
+    /* set max value of fd num to 1024 */
+    set_nofile(1024); 
 
     /* test */
     //seed = "http://www.blue.com";
@@ -160,4 +188,27 @@ static int set_nofile(rlim_t limit)
 		return -1;
 	}
 	return 0;
+}
+
+static void daemonize()
+{
+	int fd;
+	SPIDER_LOG(SPIDER_LEVEL_INFO, "Daemonized...");	
+	if (fork() != 0) exit(0);
+	setsid();
+	
+	if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
+		dup2(fd, STDIN_FILENO);
+		dup2(fd, STDOUT_FILENO);
+		dup2(fd, STDERR_FILENO);
+		if (fd > STDERR_FILENO)
+			close(fd);
+	}
+
+	if (g_conf->logfile != NULL && (fd = open(g_conf->logfile, O_RDWR | O_APPEND | O_CREAT, 0)) != -1) {
+		dup2(fd, STDOUT_FILENO);
+		if (fd > STDERR_FILENO)
+			close(fd);
+	}
+
 }

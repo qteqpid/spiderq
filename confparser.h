@@ -6,7 +6,12 @@
 #define CONF_FILE "spiderq.conf"
 
 typedef struct Config {
-	int max_job_num;
+	int       max_job_num;
+	char     *seed_urls;
+	char     *include_prefixes; 
+	char     *exclude_prefixes; 
+	char     *logfile; 
+ 	int       log_level;
 };
 
 extern Config * initconfig();

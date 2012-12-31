@@ -21,7 +21,6 @@ void loadconfig(Config *conf)
 
 	if ((fp = fopen(CONF_FILE, "r")) == NULL) {
 		SPIDER_LOG(SPIDER_LEVEL_ERROR, "Can't load conf_file %s", CONF_FILE);	
-		exit(1);
 	} 
 
 	while (fgets(buf, MAX_CONF_LEN+1, fp) != NULL) {
@@ -33,6 +32,8 @@ void loadconfig(Config *conf)
 		if (argc == 2) {
 			if (strcasecmp(argv[0], "max_job_num") == 0) {
 				conf->max_job_num = atoi(argv[1]);
+			} else if (strcasecmp(argv[0], "logfile") == 0) {
+				conf->logfile = strdup(argv[1]);
 			} else {
 				err = "Unknown directive"; goto conferr;
 			}
