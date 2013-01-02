@@ -11,6 +11,8 @@ Config * initconfig()
         conf->exclude_prefixes = NULL;
         conf->logfile = NULL;
         conf->log_level = 0;
+	conf->max_depth = 0;
+        conf->make_hostdir = 0;
 	return conf;
 }
 
@@ -43,6 +45,10 @@ void loadconfig(Config *conf)
 				conf->seeds = strdup(argv[1]);
 			} else if (strcasecmp(argv[0], "log_level") == 0) {
 				conf->log_level = atoi(argv[1]);
+			} else if (strcasecmp(argv[0], "max_depth") == 0) {
+				conf->max_depth = atoi(argv[1]);
+			} else if (strcasecmp(argv[0], "make_hostdir") == 0) {
+				conf->make_hostdir = atoi(argv[1]);
 			} else {
 				err = "Unknown directive"; goto conferr;
 			}

@@ -12,6 +12,8 @@ typedef struct Config {
 	char     *exclude_prefixes; 
 	char     *logfile; 
  	int       log_level;
+	int       max_depth;
+	int       make_hostdir;
 };
 
 extern Config * initconfig();

@@ -5,12 +5,10 @@
 #include <fcntl.h>
 #include "spider.h"
 #include "threads.h"
-#include "confparser.h"
 #include "qstring.h"
 
 int g_epfd;
 Config *g_conf;
-
 
 static int set_nofile(rlim_t limit);
 static void daemonize();

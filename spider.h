@@ -5,6 +5,7 @@
 #include "url.h"
 #include "socket.h"
 #include "threads.h"
+#include "confparser.h"
 
 /* macros */
 #define MAX_MESG_LEN   1024
@@ -20,6 +21,8 @@ static const char * LOG_STR[] = {
     "WARN",
     "ERROR"
 };
+
+extern Config *g_conf;
 
 #define SPIDER_LOG(level, format, ...) do{ \
     if (level >= g_conf->log_level) {\
