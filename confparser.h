@@ -7,7 +7,7 @@
 
 typedef struct Config {
 	int       max_job_num;
-	char     *seed_urls;
+	char     *seeds;
 	char     *include_prefixes; 
 	char     *exclude_prefixes; 
 	char     *logfile; 

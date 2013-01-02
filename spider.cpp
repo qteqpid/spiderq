@@ -6,9 +6,9 @@
 #include "spider.h"
 #include "threads.h"
 #include "confparser.h"
+#include "qstring.h"
 
 int g_epfd;
-static char *seed = NULL;
 Config *g_conf;
 
 
@@ -57,24 +57,28 @@ int main(int argc, void *argv[])
     g_conf = initconfig();
     loadconfig(g_conf);
 
-    if (daemonized)
-	daemonize();
-
     /* change wd to download directory */
     chdir("download"); 
     
     /* set max value of fd num to 1024 */
     set_nofile(1024); 
 
-    /* test */
-    //seed = "http://www.blue.com";
-    //seed = "http://trac.instreet.cn:81";
-    seed = "http://www.imeiding.com/";
-    //seed = "http://www.imeiding.com/test.php";
-    push_surlqueue(seed);
-//    push_surlqueue(seed);
+    /* add seeds */
+    if (g_conf->seeds == NULL) {
+        SPIDER_LOG(SPIDER_LEVEL_INFO, "We have no seeds, Buddy!");
+	exit(0);
+    } else {
+        int c = 0;
+	char ** splits = strsplit(g_conf->seeds, ',', &c, 0);
+        while (c--)
+            push_surlqueue(splits[c]);
+    }	
 
-    /* create a thread for parse seed surl to ourl */
+    /* daemonized if setted */
+    if (daemonized)
+	daemonize();
+
+    /* create a thread for DNS parsing and parse seed surl to ourl */
     int err;
     if ((err = create_thread(urlparser, NULL, NULL, NULL)) < 0) {
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "Create urlparser thread fail: %s", strerror(err));

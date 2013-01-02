@@ -2,8 +2,8 @@
 #include "spider.h"
 #include "confparser.h"
 
-extern Config * g_conf;
 int g_cur_thread_num = 0;
+extern Config *g_conf;
 
 pthread_mutex_t gctn_lock = PTHREAD_MUTEX_INITIALIZER;
 

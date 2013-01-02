@@ -6,6 +6,11 @@ Config * initconfig()
 {
 	Config *conf = (Config *)malloc(sizeof(Config));
 	conf->max_job_num = 10;
+	conf->seeds = NULL;
+        conf->include_prefixes = NULL;
+        conf->exclude_prefixes = NULL;
+        conf->logfile = NULL;
+        conf->log_level = 0;
 	return conf;
 }
 
@@ -34,6 +39,10 @@ void loadconfig(Config *conf)
 				conf->max_job_num = atoi(argv[1]);
 			} else if (strcasecmp(argv[0], "logfile") == 0) {
 				conf->logfile = strdup(argv[1]);
+			} else if (strcasecmp(argv[0], "seeds") == 0) {
+				conf->seeds = strdup(argv[1]);
+			} else if (strcasecmp(argv[0], "log_level") == 0) {
+				conf->log_level = atoi(argv[1]);
 			} else {
 				err = "Unknown directive"; goto conferr;
 			}

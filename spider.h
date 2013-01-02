@@ -9,7 +9,6 @@
 /* macros */
 #define MAX_MESG_LEN   1024
 
-#define SPIDER_LOG_LEVEL   1
 #define SPIDER_LEVEL_DEBUG 0
 #define SPIDER_LEVEL_INFO  1
 #define SPIDER_LEVEL_WARN  2
@@ -23,7 +22,7 @@ static const char * LOG_STR[] = {
 };
 
 #define SPIDER_LOG(level, format, ...) do{ \
-    if (level >= SPIDER_LOG_LEVEL) {\
+    if (level >= g_conf->log_level) {\
 	time_t now = time(NULL); \
         char msg[MAX_MESG_LEN]; \
 	char buf[32]; \
