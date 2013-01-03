@@ -2,10 +2,12 @@
 #define SPIDER_H
 
 #include <stdarg.h>
+#include <vector>
 #include "url.h"
 #include "socket.h"
 #include "threads.h"
 #include "confparser.h"
+#include "dso.h"
 
 /* macros */
 #define MAX_MESG_LEN   1024
@@ -38,6 +40,7 @@ extern Config *g_conf;
 	exit(-1); \
     } \
 } while(0)
+
 
 extern int attach_epoll_task();
 

@@ -11,7 +11,7 @@ OPTIMIZATION?=-O2 -DNDEBUG
 WARNINGS=-Wall
 #WARNINGS=-Wall -Werror
 REAL_CXXFLAGS=$(OPTIMIZATION) $(CXXFLAGS) $(WARNINGS) $(DEBUG) $(PROF) 
-REAL_LDFLAGS=$(LDFLAGS) $(PROF) -lpthread -levent -lcrypt
+REAL_LDFLAGS=$(LDFLAGS) $(PROF) -lpthread -levent -lcrypt -ldl
 
 
 

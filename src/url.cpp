@@ -1,7 +1,8 @@
 #include "url.h"
+#include "dso.h"
 
 /* store uncrawled urls here */
-static queue <char *> surl_queue;
+static queue <Surl *> surl_queue;
 
 /* store normalized Url objects here */
 static queue<Url *> ourl_queue;
@@ -9,22 +10,22 @@ static queue<Url *> ourl_queue;
 /* ? */
 static map<string, string> host_ip_map;
 
-static Url * spliturl(char *url);
+static Url * surl2ourl(Surl *url);
 static int iscrawled(char * url);
 static char * url_normalized(char *url);
 static char * attach_domain(char *url, const char *domain);
 static void dns_callback(int result, char type, int count, int ttl, void *addresses, void *arg);
 static int is_bin_url(char *url);
+static int surl_precheck(Surl *surl);
 
 pthread_mutex_t oq_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sq_lock = PTHREAD_MUTEX_INITIALIZER;
 
-void push_surlqueue(char * url)
+void push_surlqueue(Surl *url)
 {
-    if (url != NULL) {
+    if (url != NULL && surl_precheck(url)) {
     	pthread_mutex_lock(&sq_lock);
-        char * nurl = strdup(url);
-        surl_queue.push(nurl);
+        surl_queue.push(url);
     	pthread_mutex_unlock(&sq_lock);
     }
 }
@@ -41,6 +42,16 @@ Url * pop_ourlqueue()
     	pthread_mutex_unlock(&oq_lock);
         return NULL;
     }
+}
+
+static int surl_precheck(Surl *surl)
+{
+    unsigned int i;
+    for (i = 0; i < modules_pre_surl.size(); i++) {
+	if (modules_pre_surl[i]->handle(surl) != MODULE_OK)
+		return 0;
+    }
+    return 1;
 }
 
 static void push_ourlqueue(Url * ourl)
@@ -68,7 +79,7 @@ int is_surlqueue_empty()
 
 void * urlparser(void *arg)
 {
-    char *url = NULL;
+    Surl *url = NULL;
     Url  *ourl = NULL;
     map<string, string>::const_iterator itr;
     //event_base * base = event_base_new();
@@ -86,20 +97,21 @@ void * urlparser(void *arg)
     	pthread_mutex_unlock(&sq_lock);
 
         /* normalize url */
-        if ((url = url_normalized(url)) == NULL) {
+        if ((url->url = url_normalized(url->url)) == NULL) {
             SPIDER_LOG(SPIDER_LEVEL_WARN, "Normalize url fail");
             continue;
         }
 
-        if (iscrawled(url)) { /* if is crawled */
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I seen this url: %s", url);
+        if (iscrawled(url->url)) { /* if is crawled */
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I seen this url: %s", url->url);
+            free(url->url);
             free(url);
             url = NULL;
             continue;
         } else {
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I want this url: %s", url);
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I want this url: %s", url->url);
             /* spilt url into Url object */
-            ourl = spliturl(url);
+            ourl = surl2ourl(url);
    
             itr = host_ip_map.find(ourl->domain);
             if (itr == host_ip_map.end()) { // not found
@@ -128,7 +140,7 @@ void * urlparser(void *arg)
 /*
  * 返回最后找到的链接的下一个下标,if not found return 0;
  */
-int extract_url(regex_t *re, char *str, char *domain)
+int extract_url(regex_t *re, char *str, Url *ourl)
 {
     const size_t nmatch = 2;
     regmatch_t matchptr[nmatch];
@@ -149,11 +161,14 @@ int extract_url(regex_t *re, char *str, char *domain)
 	    continue;
 	}
 	
-        char *url = attach_domain(tmp, domain);
+        char *url = attach_domain(tmp, ourl->domain);
         if (url != NULL) {
             /* TODO: Why not url ? */
             SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I find a url: %s", url);
-            push_surlqueue(url);
+            Surl * surl = (Surl *)malloc(sizeof(Surl));
+            surl->url = url;
+            surl->level = ourl->level + 1;
+            push_surlqueue(surl);
         }
     }
 
@@ -247,16 +262,16 @@ static void dns_callback(int result, char type, int count, int ttl, void *addres
     event_loopexit(NULL); // not safe for multithreads 
 }
     
-static Url * spliturl(char *url)
+static Url * surl2ourl(Surl * surl)
 {
     Url *ourl = (Url *)calloc(1, sizeof(Url));
-    char *p = strchr(url, '/');
+    char *p = strchr(surl->url, '/');
     if (p == NULL) {
-        ourl->domain = url;
-        ourl->path = url + strlen(url); 
+        ourl->domain = surl->url;
+        ourl->path = surl->url + strlen(surl->url); 
     } else {
         *p = '\0';
-        ourl->domain = url;
+        ourl->domain = surl->url;
         ourl->path = p+1;
     }
     // port
@@ -270,6 +285,8 @@ static Url * spliturl(char *url)
     } else {
         ourl->port = 80;
     }
+    // level
+    ourl->level = surl->level;
     return ourl;
 }
 

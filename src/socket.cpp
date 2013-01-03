@@ -116,7 +116,7 @@ void * recv_response(void * arg)
 
         } else if (n == 0) {
             if (len > 0) {
-            	extract_url(&re, buffer, narg->url->domain);
+            	extract_url(&re, buffer, narg->url);
                 write(fd, buffer, len);
 	    }
             break;
@@ -151,7 +151,7 @@ void * recv_response(void * arg)
                 continue;
             }
 
-            str_pos = extract_url(&re, buffer, narg->url->domain);
+            str_pos = extract_url(&re, buffer, narg->url);
             char *p = rindex(buffer, ' ');
             if (p == NULL) {
                 // 没有空格，应该也不会有href被截断

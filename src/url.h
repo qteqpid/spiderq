@@ -17,11 +17,17 @@ using namespace std;
 
 #define MAX_LINK_LEN 128
 
+typedef struct Surl {
+    char  *url;
+    int    level;
+} Surl;
+
 typedef struct Url {
     char *domain;
     char *path;
     int  port;
     char *ip;
+    int  level;
 } Url;
 
 typedef struct evso_arg {
@@ -29,13 +35,13 @@ typedef struct evso_arg {
     Url     *url;
 } evso_arg;
 
-extern void push_surlqueue(char * url);
+extern void push_surlqueue(Surl * url);
 extern Url * pop_ourlqueue();
 extern void * urlparser(void * arg);
 extern void free_url(Url * ourl);
 extern int is_ourlqueue_empty();
 extern int is_surlqueue_empty();
-extern int extract_url(regex_t *re, char *str, char *domain);
+extern int extract_url(regex_t *re, char *str, Url *domain);
 extern char * url2fn(const Url * url);
 
 #endif

@@ -19,7 +19,6 @@ OPTIMIZATION?=-O2 -DNDEBUG
 WARNINGS=-Wall
 CXXFLAGS=-I../src
 REAL_CXXFLAGS=$(OPTIMIZATION) -fPIC $(CXXFLAGS) $(WARNINGS) $(DEBUG) $(PROF)
-REAL_LDFLAGS=$(LDFLAGS) $(PROF) -ldl
 
 
 all: $(DYLIBNAMES) 
@@ -28,7 +27,7 @@ $(DYLIBNAMES): $(OBJS)
 	$(CXX) -shared -Wl,-soname,$@.$(DYLIBMINORSUFFIX) -o $@ $(LDFLAGS) $<
 
 
-.c.o:
+.cpp.o:
 	$(CXX)  -c $(REAL_CXXFLAGS) $<
 
 clean:

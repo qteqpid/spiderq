@@ -61,6 +61,12 @@ int main(int argc, void *argv[])
     /* set max value of fd num to 1024 */
     set_nofile(1024); 
 
+    /* load all modules */
+    vector<char *>::iterator it = g_conf->modules.begin();
+    for(; it != g_conf->modules.end(); it++) {
+        dso_load(g_conf->module_path, *it); 
+    } 
+
     /* add seeds */
     if (g_conf->seeds == NULL) {
         SPIDER_LOG(SPIDER_LEVEL_INFO, "We have no seeds, Buddy!");
@@ -68,8 +74,12 @@ int main(int argc, void *argv[])
     } else {
         int c = 0;
 	char ** splits = strsplit(g_conf->seeds, ',', &c, 0);
-        while (c--)
-            push_surlqueue(splits[c]);
+        while (c--) {
+	    Surl * surl = (Surl *)malloc(sizeof(Surl));
+            surl->url = splits[c];
+            surl->level = 0;
+            push_surlqueue(surl);
+        }
     }	
 
     /* daemonized if setted */

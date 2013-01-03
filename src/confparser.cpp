@@ -13,6 +13,8 @@ Config * initconfig()
         conf->log_level = 0;
 	conf->max_depth = 0;
         conf->make_hostdir = 0;
+	conf->module_path = NULL;
+	//conf->modules
 	return conf;
 }
 
@@ -43,6 +45,10 @@ void loadconfig(Config *conf)
 				conf->logfile = strdup(argv[1]);
 			} else if (strcasecmp(argv[0], "seeds") == 0) {
 				conf->seeds = strdup(argv[1]);
+			} else if (strcasecmp(argv[0], "module_path") == 0) {
+				conf->module_path = strdup(argv[1]);
+			} else if (strcasecmp(argv[0], "load_module") == 0) {
+				conf->modules.push_back(strdup(argv[1]));
 			} else if (strcasecmp(argv[0], "log_level") == 0) {
 				conf->log_level = atoi(argv[1]);
 			} else if (strcasecmp(argv[0], "max_depth") == 0) {
