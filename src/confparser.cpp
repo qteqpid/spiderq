@@ -2,6 +2,8 @@
 #include "qstring.h"
 #include "confparser.h"
 
+#define INF 0x7FFFFFFF
+
 Config * initconfig()
 {
 	Config *conf = (Config *)malloc(sizeof(Config));
@@ -11,7 +13,7 @@ Config * initconfig()
         conf->exclude_prefixes = NULL;
         conf->logfile = NULL;
         conf->log_level = 0;
-	conf->max_depth = 0;
+	conf->max_depth = INF;
         conf->make_hostdir = 0;
 	conf->module_path = NULL;
 	//conf->modules
