@@ -13,10 +13,10 @@ Module * dso_load(const char *path, const char *name)
         char * npath = strcat2(3, path, name, ".so");
 
 	if ((handle = dlopen(npath, RTLD_GLOBAL | RTLD_NOW)) == NULL) {	
-		SPIDER_LOG(SPIDER_LEVEL_ERROR, "Load module %s fail: %s", name, dlerror());
+		SPIDER_LOG(SPIDER_LEVEL_ERROR, "Load module fail(dlopen): %s", dlerror());
 	}
 	if ((rv = dlsym(handle, name)) == NULL) {
-		SPIDER_LOG(SPIDER_LEVEL_ERROR, "Load module %s fail: %s", name, dlerror());
+		SPIDER_LOG(SPIDER_LEVEL_ERROR, "Load module fail(dlsym): %s", dlerror());
 	}
 	module = (Module *)rv;
 	module->init(module);
