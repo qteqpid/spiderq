@@ -4,6 +4,7 @@
 #include "qstring.h"
 
 vector<Module *> modules_pre_surl;
+vector<Module *> modules_post_header;
 
 Module * dso_load(const char *path, const char *name)
 {

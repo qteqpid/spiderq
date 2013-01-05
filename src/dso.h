@@ -29,6 +29,12 @@ extern vector<Module *> modules_pre_surl;
     modules_pre_surl.push_back(module); \
 } while(0)
 
+extern vector<Module *> modules_post_header;
+
+#define SPIDER_ADD_MODULE_POST_HEADER(module) do {\
+    modules_post_header.push_back(module); \
+} while(0)
+
 extern Module * dso_load(const char *path, const char *name);
 
 #endif

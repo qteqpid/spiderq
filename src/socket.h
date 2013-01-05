@@ -1,6 +1,11 @@
 #ifndef QSOCKET_H
 #define QSOCKET_H
 
+typedef struct Header {
+    char      *content_type;
+    int        status_code;
+} Header;
+
 extern int build_connect(int *fd, char *ip, int port);
 extern int send_request(int fd, void *arg);
 extern void set_nonblocking(int fd);

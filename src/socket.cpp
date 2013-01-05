@@ -5,8 +5,12 @@
 #include "url.h"
 #include "socket.h"
 #include "threads.h"
+#include "qstring.h"
+#include "dso.h"
 
 static const char * HREF_PATTERN = "href=\"\\s*\\([^ >\"]*\\)\\s*\"";
+static Header * parse_header(char *header);
+static int header_postcheck(Header *header);
 
 int build_connect(int *fd, char *ip, int port)
 {
@@ -82,7 +86,9 @@ void * recv_response(void * arg)
     int fd = -1;
     int str_pos = 0;
     int i, len = 0, n, trunc_head = 0;
-    char buffer[1024];
+    char buffer[1024] = {0};
+    char header[4096] = {0};
+    Header *h = NULL;
     char * body_ptr = NULL;
     evso_arg * narg = (evso_arg *)arg;
     char * fn = url2fn(narg->url);
@@ -123,17 +129,14 @@ void * recv_response(void * arg)
             buffer[len] = '\0';
 
             if (!trunc_head) {
-                /* TODO: skip if status code is NOT 200 */
-
-                /* filter out !(Content-Type: text/html)  */
-                if ((body_ptr = strstr(buffer, "Content-Type: ")) != NULL) {
-                    if (strncmp(body_ptr+14, "text/html", 9) != 0) {
-                        SPIDER_LOG(SPIDER_LEVEL_INFO, "Content-Type is not text/html");
+                if ((body_ptr = strstr(buffer, "\r\n\r\n")) != NULL) {
+                    *(body_ptr+2) = '\0';
+                    strcat(header, buffer);
+                    h = parse_header(header);
+                    if (!header_postcheck(h)) {
                         goto leave;
                     }
-                }
 
-                if ((body_ptr = strstr(buffer, "\r\n\r\n")) != NULL) {
                     body_ptr += 4;
                     for (i = 0; *body_ptr; i++) {
                         buffer[i] = *body_ptr;
@@ -148,6 +151,7 @@ void * recv_response(void * arg)
                     }
 
                 } else {
+                    strcat(header, buffer);
                     len = 0;
                 }
                 continue;
@@ -184,6 +188,7 @@ leave:
     close(narg->fd); /* close socket */
     free_url(narg->url); /* free Url object */
     regfree(&re); /* free regex object */
+    if (h != NULL) free(h);
 
     /* wait for dns to prepare new ourl */
     if (is_ourlqueue_empty())
@@ -192,3 +197,45 @@ leave:
     return NULL;
 }
 
+
+static int header_postcheck(Header *header)
+{
+    unsigned int i;
+    for (i = 0; i < modules_post_header.size(); i++) {
+        if (modules_post_header[i]->handle(header) != MODULE_OK)
+            return 0;
+    }
+    return 1;
+}
+
+static Header * parse_header(char *header)
+{
+    int c = 0;
+    char *p = NULL;
+    char **sps = NULL;
+    char *start = header;
+    Header *h = (Header *)calloc(1, sizeof(Header));
+
+    if ((p = strstr(start, "\r\n")) != NULL) {
+        *p = '\0';
+        sps = strsplit(start, ' ', &c, 2);
+        if (c == 3) {
+            h->status_code = atoi(sps[1]);
+        } else {
+            h->status_code = 600; 
+        }
+        start = p + 2;
+    }
+
+    while ((p = strstr(start, "\r\n")) != NULL) {
+        *p = '\0';
+        sps = strsplit(start, ':', &c, 1);
+        if (c == 2) {
+            if (strcasecmp(sps[0], "content-type") == 0) {
+                h->content_type = strdup(strim(sps[1]));
+            }
+        }
+        start = p + 2;
+    }
+    return h;
+}
