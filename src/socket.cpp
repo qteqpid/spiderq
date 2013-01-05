@@ -79,7 +79,7 @@ void * recv_response(void * arg)
 {
     begin_thread();
 
-    int fd;
+    int fd = -1;
     int str_pos = 0;
     int i, len = 0, n, trunc_head = 0;
     char buffer[1024];
@@ -93,11 +93,6 @@ void * recv_response(void * arg)
     }
 
     SPIDER_LOG(SPIDER_LEVEL_INFO, "Crawling url: %s/%s", narg->url->domain, narg->url->path);
-
-    if ((fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
-        SPIDER_LOG(SPIDER_LEVEL_WARN, "open file for writing fail: %s", fn);
-        goto leave;
-    }
 
     while(1) {
         n = read(narg->fd, buffer+len, 1023-len);
@@ -147,6 +142,11 @@ void * recv_response(void * arg)
                     buffer[i] = '\0';
                     len = i;
                     trunc_head = 1;
+                    if ((fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
+                        SPIDER_LOG(SPIDER_LEVEL_WARN, "open file for writing fail: %s", fn);
+                        goto leave;
+                    }
+
                 } else {
                     len = 0;
                 }
@@ -179,8 +179,8 @@ void * recv_response(void * arg)
     }
 
 leave:
-    free(fn);
     close(fd); /* close file */
+    free(fn);
     close(narg->fd); /* close socket */
     free_url(narg->url); /* free Url object */
     regfree(&re); /* free regex object */
