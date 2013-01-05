@@ -35,6 +35,6 @@ gprof:
 	$(MAKE) PROF="-pg" 
 
 install:
-	-mv $(TARGET) ../
+	-cp -f $(TARGET) ../
 
 .PHONY: all clean debug gprof install

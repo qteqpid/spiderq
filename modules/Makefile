@@ -23,8 +23,9 @@ REAL_CXXFLAGS=$(OPTIMIZATION) -fPIC $(CXXFLAGS) $(WARNINGS) $(DEBUG) $(PROF)
 
 all: $(DYLIBNAMES) 
 
-$(DYLIBNAMES): $(OBJS)
-	$(CXX) -shared -Wl,-soname,$@.$(DYLIBMINORSUFFIX) -o $@ $(LDFLAGS) $<
+#$(DYLIBNAMES): $(OBJS)
+%.so:%.o
+	$(CXX) -shared -Wl,-soname,$@.$(DYLIBMINORSUFFIX) $(LDFLAGS) $< -o $@ 
 
 
 .cpp.o:
@@ -45,7 +46,7 @@ INSTALL?= cp -af
 
 install: $(DYLIBNAMES) 
 	@mkdir -p $(MODULEDIR)
-	-$(INSTALL) $< $(MODULEDIR)
+	-$(INSTALL) $^ $(MODULEDIR)
 
 debug:
 	$(MAKE) OPTIMIZATION="" DEBUG="-g -ggdb -g3"

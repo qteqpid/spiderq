@@ -48,8 +48,8 @@ static int surl_precheck(Surl *surl)
 {
     unsigned int i;
     for (i = 0; i < modules_pre_surl.size(); i++) {
-	if (modules_pre_surl[i]->handle(surl) != MODULE_OK)
-		return 0;
+	    if (modules_pre_surl[i]->handle(surl) != MODULE_OK)
+		    return 0;
     }
     return 1;
 }
