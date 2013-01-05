@@ -45,6 +45,10 @@ void loadconfig(Config *conf)
 				conf->max_job_num = atoi(argv[1]);
 			} else if (strcasecmp(argv[0], "logfile") == 0) {
 				conf->logfile = strdup(argv[1]);
+			} else if (strcasecmp(argv[0], "include_prefixes") == 0) {
+				conf->include_prefixes = strdup(argv[1]);
+			} else if (strcasecmp(argv[0], "exclude_prefixes") == 0) {
+				conf->exclude_prefixes = strdup(argv[1]);
 			} else if (strcasecmp(argv[0], "seeds") == 0) {
 				conf->seeds = strdup(argv[1]);
 			} else if (strcasecmp(argv[0], "module_path") == 0) {
@@ -56,7 +60,7 @@ void loadconfig(Config *conf)
 			} else if (strcasecmp(argv[0], "max_depth") == 0) {
 				conf->max_depth = atoi(argv[1]);
 			} else if (strcasecmp(argv[0], "make_hostdir") == 0) {
-				conf->make_hostdir = atoi(argv[1]);
+				conf->make_hostdir = yesnotoi(argv[1]);
 			} else {
 				err = "Unknown directive"; goto conferr;
 			}

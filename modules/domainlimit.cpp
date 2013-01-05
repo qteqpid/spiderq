@@ -15,6 +15,10 @@ static vector<Dlnode *> exclude_nodes;
 static int handler(void * data) {
     unsigned int i;
     Surl *url = (Surl *)data;
+    
+    if (url->level == 0)
+        return MODULE_OK;
+
     for (i = 0; i < include_nodes.size(); i++) {
         if (strncmp(url->url, include_nodes[i]->prefix, include_nodes[i]->len) == 0)
             return MODULE_OK;
