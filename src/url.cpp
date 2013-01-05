@@ -12,7 +12,6 @@ static map<string, string> host_ip_map;
 
 static Url * surl2ourl(Surl *url);
 static int iscrawled(char * url);
-static char * url_normalized(char *url);
 static char * attach_domain(char *url, const char *domain);
 static void dns_callback(int result, char type, int count, int ttl, void *addresses, void *arg);
 static int is_bin_url(char *url);
@@ -24,9 +23,9 @@ pthread_mutex_t sq_lock = PTHREAD_MUTEX_INITIALIZER;
 void push_surlqueue(Surl *url)
 {
     if (url != NULL && surl_precheck(url)) {
-    	pthread_mutex_lock(&sq_lock);
+        pthread_mutex_lock(&sq_lock);
         surl_queue.push(url);
-    	pthread_mutex_unlock(&sq_lock);
+        pthread_mutex_unlock(&sq_lock);
     }
 }
 
@@ -36,10 +35,10 @@ Url * pop_ourlqueue()
     if (!ourl_queue.empty()) {
         Url * url = ourl_queue.front();
         ourl_queue.pop();
-    	pthread_mutex_unlock(&oq_lock);
+        pthread_mutex_unlock(&oq_lock);
         return url;
     } else {
-    	pthread_mutex_unlock(&oq_lock);
+        pthread_mutex_unlock(&oq_lock);
         return NULL;
     }
 }
@@ -48,8 +47,8 @@ static int surl_precheck(Surl *surl)
 {
     unsigned int i;
     for (i = 0; i < modules_pre_surl.size(); i++) {
-	    if (modules_pre_surl[i]->handle(surl) != MODULE_OK)
-		    return 0;
+        if (modules_pre_surl[i]->handle(surl) != MODULE_OK)
+            return 0;
     }
     return 1;
 }
@@ -91,47 +90,32 @@ void * urlparser(void *arg)
             SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Surl_queue is empty, sleep 0.5s");
             usleep(500000); /* sleep 0.5s */
         }
-    	pthread_mutex_lock(&sq_lock);
+        pthread_mutex_lock(&sq_lock);
         url = surl_queue.front();
         surl_queue.pop();
-    	pthread_mutex_unlock(&sq_lock);
+        pthread_mutex_unlock(&sq_lock);
 
-        /* normalize url */
-        if ((url->url = url_normalized(url->url)) == NULL) {
-            SPIDER_LOG(SPIDER_LEVEL_WARN, "Normalize url fail");
-            continue;
-        }
+        /* spilt url into Url object */
+        ourl = surl2ourl(url);
 
-        if (iscrawled(url->url)) { /* if is crawled */
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I seen this url: %s", url->url);
-            free(url->url);
-            free(url);
-            url = NULL;
-            continue;
+        itr = host_ip_map.find(ourl->domain);
+        if (itr == host_ip_map.end()) { // not found
+            /* dns resolve */
+
+            event_base * base = event_init();
+            evdns_init();
+            evdns_resolve_ipv4(ourl->domain, 0, dns_callback, ourl);
+            event_dispatch();
+            event_base_free(base);
+
+            //evdns_base_resolve_ipv4(dnsbase, ourl->domain, 0, dns_callback, ourl);
+            //event_base_loop(base, EVLOOP_ONCE | EVLOOP_NONBLOCK);
         } else {
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I want this url: %s", url->url);
-            /* spilt url into Url object */
-            ourl = surl2ourl(url);
-   
-            itr = host_ip_map.find(ourl->domain);
-            if (itr == host_ip_map.end()) { // not found
-                /* dns resolve */
-                
-                event_base * base = event_init();
-                evdns_init();
-                evdns_resolve_ipv4(ourl->domain, 0, dns_callback, ourl);
-                event_dispatch();
-                event_base_free(base);
-                
-                //evdns_base_resolve_ipv4(dnsbase, ourl->domain, 0, dns_callback, ourl);
-                //event_base_loop(base, EVLOOP_ONCE | EVLOOP_NONBLOCK);
-            } else {
-                ourl->ip = strdup(itr->second.c_str());
-		push_ourlqueue(ourl);
-            }
+            ourl->ip = strdup(itr->second.c_str());
+            push_ourlqueue(ourl);
         }
-
     }
+
     //evdns_base_free(dnsbase, 0);
     //event_base_free(base);
     return NULL;
@@ -154,21 +138,37 @@ int extract_url(regex_t *re, char *str, Url *ourl)
         strncpy(tmp, p, len);
         tmp[len] = '\0';
         p = p + len + (matchptr[0].rm_eo - matchptr[1].rm_eo);
-	
-	/* exclude binary file */
-	if (is_bin_url(tmp)) {
-	    free(tmp);
-	    continue;
-	}
-	
+
+        /* exclude binary file */
+        if (is_bin_url(tmp)) {
+            free(tmp);
+            continue;
+        }
+
         char *url = attach_domain(tmp, ourl->domain);
         if (url != NULL) {
             /* TODO: Why not url ? */
             SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I find a url: %s", url);
             Surl * surl = (Surl *)malloc(sizeof(Surl));
-            surl->url = url;
             surl->level = ourl->level + 1;
-            push_surlqueue(surl);
+
+            /* normalize url */
+            if ((surl->url = url_normalized(url)) == NULL) {
+                SPIDER_LOG(SPIDER_LEVEL_WARN, "Normalize url fail");
+                free(surl);
+                continue;
+            }
+
+            if (iscrawled(surl->url)) { /* if is crawled */
+                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I seen this url: %s", surl->url);
+                free(surl->url);
+                free(surl);
+                continue;
+            } else {
+                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I want this url: %s", surl->url);
+                push_surlqueue(surl);
+            }
+
         }
     }
 
@@ -184,10 +184,10 @@ static int is_bin_url(char *url)
 {
     char *p = NULL;
     if ((p = strrchr(url, '.')) != NULL) {
-	if (strstr(BIN_SUFFIXES, p) == NULL)
-	    return 0;
-	else
-	    return 1;
+        if (strstr(BIN_SUFFIXES, p) == NULL)
+            return 0;
+        else
+            return 1;
     }
     return 0;
 }
@@ -213,7 +213,7 @@ static char * attach_domain(char *url, const char *domain)
         tmp[ulen+dlen] = '\0';
         free(url);
         return tmp;
-         
+
     } else {
         //do nothing
         free(url);
@@ -227,10 +227,10 @@ char * url2fn(const Url * url)
     int l1 = strlen(url->domain);
     int l2 = strlen(url->path);
     char *fn = (char *)malloc(l1+l2+2);
-    
+
     for (i = 0; i < l1; i++)
         fn[i] = url->domain[i];
-    
+
     fn[l1++] = '_';
 
     for (i = 0; i < l2; i++)
@@ -257,11 +257,11 @@ static void dns_callback(int result, char type, int count, int ttl, void *addres
         SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Dns resolve OK: %s -> %s", ourl->domain, ip);
         host_ip_map[ourl->domain] = strdup(ip);
         ourl->ip = strdup(ip);
-	push_ourlqueue(ourl);
+        push_ourlqueue(ourl);
     }
     event_loopexit(NULL); // not safe for multithreads 
 }
-    
+
 static Url * surl2ourl(Surl * surl)
 {
     Url *ourl = (Url *)calloc(1, sizeof(Url));
@@ -290,14 +290,14 @@ static Url * surl2ourl(Surl * surl)
     return ourl;
 }
 
-static char * url_normalized(char *url) 
+char * url_normalized(char *url) 
 {
     if (url == NULL) return NULL;
 
     /* rtrim url */
     int len = strlen(url);
     while (len && isspace(url[len-1]))
-	len--;
+        len--;
     url[len] = '\0';
 
     if (len == 0) {

@@ -43,5 +43,6 @@ extern int is_ourlqueue_empty();
 extern int is_surlqueue_empty();
 extern int extract_url(regex_t *re, char *str, Url *domain);
 extern char * url2fn(const Url * url);
+extern char * url_normalized(char *url);
 
 #endif

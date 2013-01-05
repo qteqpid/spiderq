@@ -37,11 +37,11 @@ int send_request(int fd, void *arg)
     Url *url = (Url *)arg;
 
     sprintf(request, "GET /%s HTTP/1.0\r\n"
-                     "Host: %s\r\n"
-                     "Accept: */*\r\n"
-                     "Connection: Keep-Alive\r\n"
-                     "User-Agent: Mozilla/5.0 (compatible; Qteqpidspider/1.0;)\r\n"
-                     "Referer: %s\r\n\r\n", url->path, url->domain, url->domain);
+            "Host: %s\r\n"
+            "Accept: text/html\r\n"
+            "Connection: Keep-Alive\r\n"
+            "User-Agent: Mozilla/5.0 (compatible; Qteqpidspider/1.0;)\r\n"
+            "Referer: %s\r\n\r\n", url->path, url->domain, url->domain);
 
     need = strlen(request);
     begin = 0;
@@ -87,7 +87,7 @@ void * recv_response(void * arg)
     evso_arg * narg = (evso_arg *)arg;
     char * fn = url2fn(narg->url);
     regex_t re;
-    
+
     if (regcomp(&re, HREF_PATTERN, 0) != 0) {// 编译失败
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "compile regex error");
     }
@@ -96,7 +96,7 @@ void * recv_response(void * arg)
 
     if ((fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
         SPIDER_LOG(SPIDER_LEVEL_WARN, "open file for writing fail: %s", fn);
-	goto leave;
+        goto leave;
     }
 
     while(1) {
@@ -107,34 +107,36 @@ void * recv_response(void * arg)
                  * TODO: Why always recv EAGAIN?
                  * should we deal EINTR
                  */
-                SPIDER_LOG(SPIDER_LEVEL_WARN, "thread %lu meet EAGAIN or EWOULDBLOCK, sleep", pthread_self());
-                usleep(10000);
+                //SPIDER_LOG(SPIDER_LEVEL_WARN, "thread %lu meet EAGAIN or EWOULDBLOCK, sleep", pthread_self());
+                usleep(100000);
                 continue;
             } 
             SPIDER_LOG(SPIDER_LEVEL_WARN, "read socket to %s fail: %s", fn, strerror(errno));
             break;
 
         } else if (n == 0) {
+            //SPIDER_LOG(SPIDER_LEVEL_WARN, "read socket end");
             if (len > 0) {
-            	extract_url(&re, buffer, narg->url);
+                extract_url(&re, buffer, narg->url);
                 write(fd, buffer, len);
-	    }
+            }
             break;
 
         } else {
+            //SPIDER_LOG(SPIDER_LEVEL_WARN, "read socket ok! len=%d", n);
             len += n;
             buffer[len] = '\0';
 
             if (!trunc_head) {
-		/* TODO: skip if status code is NOT 200 */
-		
-		/* filter out !(Content-Type: text/html)  */
+                /* TODO: skip if status code is NOT 200 */
+
+                /* filter out !(Content-Type: text/html)  */
                 if ((body_ptr = strstr(buffer, "Content-Type: ")) != NULL) {
-			if (strncmp(body_ptr+14, "text/html", 9) != 0) {
-                		SPIDER_LOG(SPIDER_LEVEL_INFO, "Content-Type is not text/html");
-				goto leave;
-			}
-		}
+                    if (strncmp(body_ptr+14, "text/html", 9) != 0) {
+                        SPIDER_LOG(SPIDER_LEVEL_INFO, "Content-Type is not text/html");
+                        goto leave;
+                    }
+                }
 
                 if ((body_ptr = strstr(buffer, "\r\n\r\n")) != NULL) {
                     body_ptr += 4;
@@ -160,7 +162,7 @@ void * recv_response(void * arg)
 
             } else if (p-buffer >= str_pos) {
                 /* 空格在找到的最后一个链接后，则空格前
-                (包括空格)的内容都写入，空格后的内容保留 */
+                   (包括空格)的内容都写入，空格后的内容保留 */
                 write(fd, buffer, ((p-buffer)+1));
                 len -= ((p-buffer)+1);
                 /* 空格后的内容左移 */
@@ -185,7 +187,7 @@ leave:
 
     /* wait for dns to prepare new ourl */
     if (is_ourlqueue_empty())
-    	usleep(1000000);
+        usleep(1000000);
     end_thread();
     return NULL;
 }

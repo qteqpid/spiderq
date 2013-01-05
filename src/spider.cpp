@@ -78,7 +78,7 @@ int main(int argc, void *argv[])
         char ** splits = strsplit(g_conf->seeds, ',', &c, 0);
         while (c--) {
             Surl * surl = (Surl *)malloc(sizeof(Surl));
-            surl->url = strdup(splits[c]);
+            surl->url = url_normalized(strdup(splits[c]));
             surl->level = 0;
             push_surlqueue(surl);
         }

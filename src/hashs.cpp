@@ -8,11 +8,11 @@ unsigned int times33(char *str)
 	return val;
 }
 
-unsigned int times31(char *str)
+unsigned int timesnum(char *str, int num)
 {
 	unsigned int val = 0;
 	while (*str) 
-		val = val * 31 + (*str++);
+		val = val * num + (*str++);
 	return val;
 }
 
