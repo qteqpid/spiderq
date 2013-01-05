@@ -16,6 +16,7 @@ Config * initconfig()
 	conf->max_depth = INF;
         conf->make_hostdir = 0;
 	conf->module_path = NULL;
+	conf->stat_interval = 0;
 	//conf->modules
 	return conf;
 }
@@ -59,6 +60,8 @@ void loadconfig(Config *conf)
 				conf->log_level = atoi(argv[1]);
 			} else if (strcasecmp(argv[0], "max_depth") == 0) {
 				conf->max_depth = atoi(argv[1]);
+			} else if (strcasecmp(argv[0], "stat_interval") == 0) {
+				conf->stat_interval = atoi(argv[1]);
 			} else if (strcasecmp(argv[0], "make_hostdir") == 0) {
 				conf->make_hostdir = yesnotoi(argv[1]);
 			} else {

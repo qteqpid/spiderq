@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <sys/epoll.h>
 #include <sys/resource.h>
+#include <sys/time.h>
 #include <getopt.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include "spider.h"
 #include "threads.h"
 #include "qstring.h"
-#include <errno.h>
 
 int g_epfd;
 Config *g_conf;
@@ -14,6 +16,8 @@ extern int g_cur_thread_num;
 
 static int set_nofile(rlim_t limit);
 static void daemonize();
+static void stat(int sig);
+static int set_ticker(int second);
 
 static void version()
 {
@@ -101,6 +105,12 @@ int main(int argc, void *argv[])
 
     if (try_num >= 8) {
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "NO ourl! DNS parse error?");
+    }
+
+    /* set timer */
+    if (g_conf->stat_interval > 0) {
+    	signal(SIGALRM, stat);
+    	set_ticker(g_conf->stat_interval);
     }
 
     /* begin create epoll to run */
@@ -236,4 +246,24 @@ static void daemonize()
             close(fd);
     }
 
+}
+
+static int set_ticker(int second)
+{
+    struct itimerval itimer;
+    itimer.it_interval.tv_sec = (long)second;
+    itimer.it_interval.tv_usec = 0;
+    itimer.it_value.tv_sec = (long)second;
+    itimer.it_value.tv_usec = 0;
+
+    return setitimer(ITIMER_REAL, &itimer, NULL);
+}
+
+static void stat(int sig)
+{
+    SPIDER_LOG(SPIDER_LEVEL_DEBUG, 
+               "cur_thread_num=%d\tsurl_num=%d\tourl_num=%d",
+               g_cur_thread_num,
+               get_surl_queue_size(),
+               get_ourl_queue_size());
 }

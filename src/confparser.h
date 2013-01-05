@@ -10,8 +10,8 @@ using namespace std;
 #define CONF_FILE "spiderq.conf"
 
 typedef struct Config {
-	int             max_job_num;
-	char           *seeds;
+	int              max_job_num;
+	char            *seeds;
 	char            *include_prefixes; 
 	char            *exclude_prefixes; 
 	char            *logfile; 
@@ -21,6 +21,7 @@ typedef struct Config {
 
 	char *           module_path;
 	vector<char *>   modules;
+        int              stat_interval;
 
 };
 

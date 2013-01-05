@@ -340,3 +340,13 @@ void free_url(Url * ourl)
     free(ourl->ip);
     free(ourl);
 }
+
+int get_surl_queue_size()
+{
+    return surl_queue.size();
+}
+
+int get_ourl_queue_size()
+{
+    return ourl_queue.size();
+}
