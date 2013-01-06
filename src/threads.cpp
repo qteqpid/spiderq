@@ -39,17 +39,11 @@ void end_thread()
     int left = g_conf->max_job_num - (--g_cur_thread_num);
     if (left == 1) {
         /* can start one thread */
-        if (attach_epoll_task() == 0) {
-            g_cur_thread_num++; 
-        }
+        attach_epoll_task();
     } else if (left > 1) {
         /* can start two thread */
-        if (attach_epoll_task() == 0) {
-            g_cur_thread_num++; 
-        }
-        if (attach_epoll_task() == 0) {
-            g_cur_thread_num++; 
-        }
+        attach_epoll_task();
+        attach_epoll_task();
     } else {
         /* have reached g_conf->max_job_num , do nothing */
     }

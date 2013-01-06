@@ -200,6 +200,7 @@ int attach_epoll_task()
         return -1;
     }
 
+    g_cur_thread_num++; 
     return 0;
 }
 
