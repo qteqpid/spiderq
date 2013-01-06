@@ -61,9 +61,6 @@ int main(int argc, void *argv[])
     g_conf = initconfig();
     loadconfig(g_conf);
 
-    /* change wd to download directory */
-    chdir("download"); 
-
     /* set max value of fd num to 1024 */
     set_nofile(1024); 
 
@@ -91,6 +88,9 @@ int main(int argc, void *argv[])
     /* daemonized if setted */
     if (daemonized)
         daemonize();
+
+    /* change wd to download directory */
+    chdir("download"); 
 
     /* create a thread for DNS parsing and parse seed surl to ourl */
     int err;
@@ -132,9 +132,9 @@ int main(int argc, void *argv[])
         fflush(stdout);
 
         if (n <= 0) {
-            if (g_cur_thread_num == 0 && is_ourlqueue_empty() && is_surlqueue_empty()) {
+            if (g_cur_thread_num <= 0 && is_ourlqueue_empty() && is_surlqueue_empty()) {
                 sleep(1);
-                if (g_cur_thread_num == 0 && is_ourlqueue_empty() && is_surlqueue_empty())
+                if (g_cur_thread_num <= 0 && is_ourlqueue_empty() && is_surlqueue_empty())
                     break;
             }
         }
@@ -228,9 +228,9 @@ static int set_nofile(rlim_t limit)
 static void daemonize()
 {
     int fd;
-    SPIDER_LOG(SPIDER_LEVEL_INFO, "Daemonized...");	
     if (fork() != 0) exit(0);
     setsid();
+    SPIDER_LOG(SPIDER_LEVEL_INFO, "Daemonized...pid=%d", (int)getpid());	
 
     if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
         dup2(fd, STDIN_FILENO);

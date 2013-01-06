@@ -16,12 +16,14 @@
 #define SPIDER_LEVEL_INFO  1
 #define SPIDER_LEVEL_WARN  2
 #define SPIDER_LEVEL_ERROR 3
+#define SPIDER_LEVEL_CRIT  4 
 
 static const char * LOG_STR[] = { 
     "DEBUG",
     "INFO",
     "WARN",
-    "ERROR"
+    "ERROR",
+    "CRIT"
 };
 
 extern Config *g_conf;
