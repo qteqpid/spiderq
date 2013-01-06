@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <string.h>
 
+/* search if this url has been crawled */
 extern int search(char *url);
 
 #endif

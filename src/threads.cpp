@@ -2,8 +2,10 @@
 #include "spider.h"
 #include "confparser.h"
 
+/* the number of current running thread */
 int g_cur_thread_num = 0;
 
+/* lock for changing g_cur_thread_num's value */
 pthread_mutex_t gctn_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int create_thread(void *(*start_func)(void *), void * arg, pthread_t *pid, pthread_attr_t * pattr)
@@ -28,7 +30,7 @@ int create_thread(void *(*start_func)(void *), void * arg, pthread_t *pid, pthre
 
 void begin_thread()
 {
-    SPIDER_LOG(SPIDER_LEVEL_CRIT, "Begin Thread %lu", pthread_self());
+    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Begin Thread %lu", pthread_self());
 }
 
 void end_thread()
@@ -36,12 +38,12 @@ void end_thread()
     pthread_mutex_lock(&gctn_lock);	
     int left = g_conf->max_job_num - (--g_cur_thread_num);
     if (left == 1) {
-	/* can start one thread */
+        /* can start one thread */
         if (attach_epoll_task() == 0) {
             g_cur_thread_num++; 
         }
     } else if (left > 1) {
-	/* can start two thread */
+        /* can start two thread */
         if (attach_epoll_task() == 0) {
             g_cur_thread_num++; 
         }
@@ -49,8 +51,8 @@ void end_thread()
             g_cur_thread_num++; 
         }
     } else {
-	/* have reached g_conf->max_job_num , do nothing */
+        /* have reached g_conf->max_job_num , do nothing */
     }
-    SPIDER_LOG(SPIDER_LEVEL_CRIT, "End Thread %lu, cur_thread_num=%d", pthread_self(), g_cur_thread_num);
+    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "End Thread %lu, cur_thread_num=%d", pthread_self(), g_cur_thread_num);
     pthread_mutex_unlock(&gctn_lock);	
 }

@@ -1,8 +1,8 @@
 #include "bloomfilter.h"
 #include "hashs.h"
-#include "md5.h"
+//#include "md5.h"
 #include "crc32.h"
-#include "sha1.h"
+//#include "sha1.h"
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -20,55 +20,55 @@
 static int bloom_table[BLOOM_SIZE] = {0};
 pthread_mutex_t bt_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static MD5_CTX md5;
-static SHA1_CONTEXT sha;  
+//static MD5_CTX md5;
+//static SHA1_CONTEXT sha;  
 
 static unsigned int encrypt(char *key, unsigned int id)
 {
-	unsigned int val = 0;
+    unsigned int val = 0;
 
-	switch(id){
-		case 0:
-			val = times33(key); break;
-		case 1:
-			val = timesnum(key,31); break;
-		case 2:
-			val = aphash(key); break;
-		case 3:
-			val = hash16777619(key); break;
-		case 4:
-			val = mysqlhash(key); break;
-		case 5:
+    switch(id){
+        case 0:
+            val = times33(key); break;
+        case 1:
+            val = timesnum(key,31); break;
+        case 2:
+            val = aphash(key); break;
+        case 3:
+            val = hash16777619(key); break;
+        case 4:
+            val = mysqlhash(key); break;
+        case 5:
             //basically multithreads supported
-			val = crc32((unsigned char *)key, strlen(key));
-			break;	
-		case 6:
-			val = timesnum(key,131); break;
+            val = crc32((unsigned char *)key, strlen(key));
+            break;	
+        case 6:
+            val = timesnum(key,131); break;
             /*
-			int i;
-			unsigned char decrypt[16];
-			MD5Init(&md5);
-			MD5Update(&md5, (unsigned char *)key, strlen(key));
-			MD5Final(&md5, decrypt);
-			for(i = 0; i < 16; i++)
-				val = (val << 5) + val + decrypt[i];
-			break;
-            */
-		case 7:
-			val = timesnum(key,1313); break;
+               int i;
+               unsigned char decrypt[16];
+               MD5Init(&md5);
+               MD5Update(&md5, (unsigned char *)key, strlen(key));
+               MD5Final(&md5, decrypt);
+               for(i = 0; i < 16; i++)
+               val = (val << 5) + val + decrypt[i];
+               break;
+               */
+        case 7:
+            val = timesnum(key,1313); break;
             /*
-    			sha1_init(&sha);  
-		    	sha1_write(&sha, (unsigned char *)key, strlen(key));
-			sha1_final(&sha);
-    			for (i=0; i < 20; i++)  
-				val = (val << 5) + val + sha.buf[i];
-			break;
-            */
-		default:
-			// should not be here
-			abort();
-	}
-	return val;
+               sha1_init(&sha);  
+               sha1_write(&sha, (unsigned char *)key, strlen(key));
+               sha1_final(&sha);
+               for (i=0; i < 20; i++)  
+               val = (val << 5) + val + sha.buf[i];
+               break;
+               */
+        default:
+            // should not be here
+            abort();
+    }
+    return val;
 }
 
 int search(char *url)
@@ -77,6 +77,7 @@ int search(char *url)
     int res = 0;
 
     pthread_mutex_lock(&bt_lock);
+
     for (i = 0; i < HASH_FUNC_NUM; i++) {
         h = encrypt(url, i);
         h %= LIMIT;
@@ -87,6 +88,8 @@ int search(char *url)
         else
             bloom_table[index] |= (0x80000000 >> pos);
     } 
+
     pthread_mutex_unlock(&bt_lock);
+
     return (res == HASH_FUNC_NUM);
 }

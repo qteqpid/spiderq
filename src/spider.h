@@ -30,16 +30,16 @@ extern Config *g_conf;
 
 #define SPIDER_LOG(level, format, ...) do{ \
     if (level >= g_conf->log_level) {\
-	time_t now = time(NULL); \
+        time_t now = time(NULL); \
         char msg[MAX_MESG_LEN]; \
-	char buf[32]; \
+        char buf[32]; \
         sprintf(msg, format, ##__VA_ARGS__); \
-	strftime(buf, sizeof(buf), "%Y%m%d %H:%M:%S", localtime(&now)); \
+        strftime(buf, sizeof(buf), "%Y%m%d %H:%M:%S", localtime(&now)); \
         fprintf(stdout, "[%s] [%s] %s\n", buf, LOG_STR[level], msg); \
         fflush(stdout); \
     } \
     if (level == SPIDER_LEVEL_ERROR) {\
-	exit(-1); \
+        exit(-1); \
     } \
 } while(0)
 
