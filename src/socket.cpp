@@ -8,14 +8,20 @@
 #include "qstring.h"
 #include "dso.h"
 
+/* regex pattern for parsing href */
 static const char * HREF_PATTERN = "href=\"\\s*\\([^ >\"]*\\)\\s*\"";
+
+/* convert header string to Header object */
 static Header * parse_header(char *header);
+
+/* call modules to check header */
 static int header_postcheck(Header *header);
 
 int build_connect(int *fd, char *ip, int port)
 {
     struct sockaddr_in server_addr;
     bzero(&server_addr, sizeof(struct sockaddr_in));
+
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
     if (!inet_aton(ip, &(server_addr.sin_addr))) {
@@ -56,7 +62,7 @@ int send_request(int fd, void *arg)
                 usleep(1000);
                 continue;
             }
-            SPIDER_LOG(SPIDER_LEVEL_WARN, "Thread %lu recv ERROR: %d", pthread_self(), n);
+            SPIDER_LOG(SPIDER_LEVEL_WARN, "Thread %lu send ERROR: %d", pthread_self(), n);
             free_url(url);
             close(fd);
             return -1;
@@ -94,7 +100,7 @@ void * recv_response(void * arg)
     char * fn = url2fn(narg->url);
     regex_t re;
 
-    if (regcomp(&re, HREF_PATTERN, 0) != 0) {// 编译失败
+    if (regcomp(&re, HREF_PATTERN, 0) != 0) {/* compile error */
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "compile regex error");
     }
 
@@ -112,11 +118,11 @@ void * recv_response(void * arg)
                 usleep(100000);
                 continue;
             } 
-            SPIDER_LOG(SPIDER_LEVEL_WARN, "read socket to %s fail: %s", fn, strerror(errno));
+            SPIDER_LOG(SPIDER_LEVEL_WARN, "Read socket to %s fail: %s", fn, strerror(errno));
             break;
 
         } else if (n == 0) {
-            //SPIDER_LOG(SPIDER_LEVEL_WARN, "read socket end");
+            /* finish reading */
             if (len > 0) {
                 extract_url(&re, buffer, narg->url);
                 write(fd, buffer, len);
@@ -134,9 +140,11 @@ void * recv_response(void * arg)
                     strcat(header, buffer);
                     h = parse_header(header);
                     if (!header_postcheck(h)) {
-                        goto leave;
+                        goto leave; /* modulues filter fail */
                     }
+                    trunc_head = 1;
 
+                    /* cover header */
                     body_ptr += 4;
                     for (i = 0; *body_ptr; i++) {
                         buffer[i] = *body_ptr;
@@ -144,13 +152,15 @@ void * recv_response(void * arg)
                     }
                     buffer[i] = '\0';
                     len = i;
-                    trunc_head = 1;
+
+                    /* open file to save */
                     if ((fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
-                        SPIDER_LOG(SPIDER_LEVEL_WARN, "open file for writing fail: %s", fn);
+                        SPIDER_LOG(SPIDER_LEVEL_WARN, "Open file for writing fail: %s", fn);
                         goto leave;
                     }
 
                 } else {
+                    /* header is so long ... */
                     strcat(header, buffer);
                     len = 0;
                 }
@@ -190,9 +200,6 @@ leave:
     regfree(&re); /* free regex object */
     if (h != NULL) free(h);
 
-    /* wait for dns to prepare new ourl */
-    if (is_ourlqueue_empty())
-        usleep(1000000);
     end_thread();
     return NULL;
 }
