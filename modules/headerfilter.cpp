@@ -4,7 +4,8 @@
 static int handler(void * data) {
     Header *h = (Header *)data;
     char *p = NULL;
-    
+
+    /* skip if not 2xx */
     if (h->status_code < 200 || h->status_code >= 300)
         return MODULE_ERR;
 
