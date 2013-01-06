@@ -72,8 +72,7 @@ int main(int argc, void *argv[])
 
     /* add seeds */
     if (g_conf->seeds == NULL) {
-        SPIDER_LOG(SPIDER_LEVEL_INFO, "We have no seeds, Buddy!");
-        exit(0);
+        SPIDER_LOG(SPIDER_LEVEL_ERROR, "We have no seeds, Buddy!");
     } else {
         int c = 0;
         char ** splits = strsplit(g_conf->seeds, ',', &c, 0);
@@ -81,7 +80,8 @@ int main(int argc, void *argv[])
             Surl * surl = (Surl *)malloc(sizeof(Surl));
             surl->url = url_normalized(strdup(splits[c]));
             surl->level = 0;
-            push_surlqueue(surl);
+            if (surl->url != NULL)
+                push_surlqueue(surl);
         }
     }	
 
@@ -93,7 +93,7 @@ int main(int argc, void *argv[])
     chdir("download"); 
 
     /* create a thread for DNS parsing and parse seed surl to ourl */
-    int err;
+    int err = -1;
     if ((err = create_thread(urlparser, NULL, NULL, NULL)) < 0) {
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "Create urlparser thread fail: %s", strerror(err));
     }
@@ -107,10 +107,10 @@ int main(int argc, void *argv[])
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "NO ourl! DNS parse error?");
     }
 
-    /* set timer */
+    /* set ticker  */
     if (g_conf->stat_interval > 0) {
-    	signal(SIGALRM, stat);
-    	set_ticker(g_conf->stat_interval);
+        signal(SIGALRM, stat);
+        set_ticker(g_conf->stat_interval);
     }
 
     /* begin create epoll to run */
@@ -138,11 +138,12 @@ int main(int argc, void *argv[])
                     break;
             }
         }
+
         for (i = 0; i < n; i++) {
             evso_arg * arg = (evso_arg *)(events[i].data.ptr);
             if ((events[i].events & EPOLLERR) ||
-                    (events[i].events & EPOLLHUP) ||
-                    (!(events[i].events & EPOLLIN))) {
+                (events[i].events & EPOLLHUP) ||
+                (!(events[i].events & EPOLLIN))) {
                 SPIDER_LOG(SPIDER_LEVEL_WARN, "epoll fail, close socket %d",arg->fd);
                 close(arg->fd);
                 continue;
@@ -167,17 +168,14 @@ int attach_epoll_task()
 {
     struct epoll_event ev;
     int sock_rv;
-    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Ready to pop ourlqueue");
+    int sockfd;
     Url * ourl = pop_ourlqueue();
     if (ourl == NULL) {
         SPIDER_LOG(SPIDER_LEVEL_WARN, "Pop ourlqueue fail!");
         return -1;
     }
 
-    SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Pop ourlqueue OK!");
-
     /* connect socket and get sockfd */
-    int sockfd;
     if ((sock_rv = build_connect(&sockfd, ourl->ip, ourl->port)) < 0) {
         SPIDER_LOG(SPIDER_LEVEL_WARN, "Build socket connect fail: %s", ourl->ip);
         return -1;
@@ -188,9 +186,7 @@ int attach_epoll_task()
     if ((sock_rv = send_request(sockfd, ourl)) < 0) {
         SPIDER_LOG(SPIDER_LEVEL_WARN, "Send socket request fail: %s", ourl->ip);
         return -1;
-    } else {
-        SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Send socket request success: %s", ourl->ip);
-    }
+    } 
 
     evso_arg * arg = (evso_arg *)calloc(1, sizeof(evso_arg));
     arg->fd = sockfd;
@@ -203,6 +199,7 @@ int attach_epoll_task()
         SPIDER_LOG(SPIDER_LEVEL_WARN, "Attach an epoll event fail!");
         return -1;
     }
+
     return 0;
 }
 
@@ -232,6 +229,7 @@ static void daemonize()
     setsid();
     SPIDER_LOG(SPIDER_LEVEL_INFO, "Daemonized...pid=%d", (int)getpid());	
 
+    /* redirect stdin|stdout|stderr to /dev/null */
     if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
         dup2(fd, STDIN_FILENO);
         dup2(fd, STDOUT_FILENO);
@@ -240,6 +238,7 @@ static void daemonize()
             close(fd);
     }
 
+    /* redirect stdout to logfile */
     if (g_conf->logfile != NULL && (fd = open(g_conf->logfile, O_RDWR | O_APPEND | O_CREAT, 0)) != -1) {
         dup2(fd, STDOUT_FILENO);
         if (fd > STDERR_FILENO)
@@ -262,8 +261,8 @@ static int set_ticker(int second)
 static void stat(int sig)
 {
     SPIDER_LOG(SPIDER_LEVEL_DEBUG, 
-               "cur_thread_num=%d\tsurl_num=%d\tourl_num=%d",
-               g_cur_thread_num,
-               get_surl_queue_size(),
-               get_ourl_queue_size());
+            "cur_thread_num=%d\tsurl_num=%d\tourl_num=%d",
+            g_cur_thread_num,
+            get_surl_queue_size(),
+            get_ourl_queue_size());
 }

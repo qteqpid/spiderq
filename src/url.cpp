@@ -76,7 +76,7 @@ int is_surlqueue_empty()
     return val;
 }
 
-void * urlparser(void *arg)
+void * urlparser(void *none)
 {
     Surl *url = NULL;
     Url  *ourl = NULL;
