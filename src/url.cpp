@@ -1,13 +1,10 @@
 #include "url.h"
 #include "dso.h"
 
-/* store uncrawled urls here */
 static queue <Surl *> surl_queue;
 
-/* store normalized Url objects here */
 static queue<Url *> ourl_queue;
 
-/* ? */
 static map<string, string> host_ip_map;
 
 static Url * surl2ourl(Surl *url);
@@ -87,21 +84,19 @@ void * urlparser(void *none)
 
     while(1) {
         while (is_surlqueue_empty()) {
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Surl_queue is empty, sleep 0.5s");
-            usleep(500000); /* sleep 0.5s */
+            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Surl_queue is empty, sleep 0.05s");
+            usleep(50000); /* sleep 0.05s */
         }
         pthread_mutex_lock(&sq_lock);
         url = surl_queue.front();
         surl_queue.pop();
         pthread_mutex_unlock(&sq_lock);
 
-        /* spilt url into Url object */
         ourl = surl2ourl(url);
 
         itr = host_ip_map.find(ourl->domain);
-        if (itr == host_ip_map.end()) { // not found
+        if (itr == host_ip_map.end()) { /* not found */
             /* dns resolve */
-
             event_base * base = event_init();
             evdns_init();
             evdns_resolve_ipv4(ourl->domain, 0, dns_callback, ourl);
@@ -147,7 +142,6 @@ int extract_url(regex_t *re, char *str, Url *ourl)
 
         char *url = attach_domain(tmp, ourl->domain);
         if (url != NULL) {
-            /* TODO: Why not url ? */
             SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I find a url: %s", url);
             Surl * surl = (Surl *)malloc(sizeof(Surl));
             surl->level = ourl->level + 1;
@@ -196,7 +190,6 @@ static char * attach_domain(char *url, const char *domain)
 {
     if (url == NULL)
         return NULL;
-
 
     if (strncmp(url, "http", 4) == 0) {
         return url;

@@ -38,13 +38,13 @@ typedef struct evso_arg {
 extern void push_surlqueue(Surl * url);
 extern Url * pop_ourlqueue();
 extern void * urlparser(void * arg);
+extern char * url2fn(const Url * url);
+extern char * url_normalized(char *url);
 extern void free_url(Url * ourl);
 extern int is_ourlqueue_empty();
 extern int is_surlqueue_empty();
-extern int extract_url(regex_t *re, char *str, Url *domain);
-extern char * url2fn(const Url * url);
-extern char * url_normalized(char *url);
 extern int get_surl_queue_size();
 extern int get_ourl_queue_size();
+extern int extract_url(regex_t *re, char *str, Url *domain);
 
 #endif
