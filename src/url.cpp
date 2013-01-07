@@ -18,12 +18,15 @@ static void get_timespec(timespec * ts, int millisecond);
 pthread_mutex_t oq_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sq_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  oq_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t  sq_cond = PTHREAD_COND_INITIALIZER;
 
 void push_surlqueue(Surl *url)
 {
     if (url != NULL && surl_precheck(url)) {
         pthread_mutex_lock(&sq_lock);
         surl_queue.push(url);
+        if (surl_queue.size() == 1)
+            pthread_cond_signal(&sq_cond);
         pthread_mutex_unlock(&sq_lock);
     }
 }
@@ -102,17 +105,17 @@ void * urlparser(void *none)
 {
     Surl *url = NULL;
     Url  *ourl = NULL;
+    struct timespec timeout;
     map<string, string>::const_iterator itr;
     //event_base * base = event_base_new();
     //evdns_base * dnsbase = evdns_base_new(base, 1);
     //event_base_loop(base,EVLOOP_NONBLOCK);
 
     while(1) {
-        while (is_surlqueue_empty()) {
-            SPIDER_LOG(SPIDER_LEVEL_DEBUG, "Surl_queue is empty, sleep 0.05s");
-            usleep(50000); /* sleep 0.05s */
-        }
         pthread_mutex_lock(&sq_lock);
+        while (surl_queue.empty()) {
+            pthread_cond_wait(&sq_cond, &sq_lock);
+        }
         url = surl_queue.front();
         surl_queue.pop();
         pthread_mutex_unlock(&sq_lock);
