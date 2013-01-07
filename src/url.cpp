@@ -13,9 +13,11 @@ static char * attach_domain(char *url, const char *domain);
 static void dns_callback(int result, char type, int count, int ttl, void *addresses, void *arg);
 static int is_bin_url(char *url);
 static int surl_precheck(Surl *surl);
+static void get_timespec(timespec * ts, int millisecond);
 
 pthread_mutex_t oq_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sq_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t  oq_cond = PTHREAD_COND_INITIALIZER;
 
 void push_surlqueue(Surl *url)
 {
@@ -28,16 +30,37 @@ void push_surlqueue(Surl *url)
 
 Url * pop_ourlqueue()
 {
+    Url *url = NULL;
     pthread_mutex_lock(&oq_lock);
     if (!ourl_queue.empty()) {
-        Url * url = ourl_queue.front();
+        url = ourl_queue.front();
         ourl_queue.pop();
         pthread_mutex_unlock(&oq_lock);
         return url;
     } else {
+        int trynum = 3;
+        struct timespec timeout;
+        while (trynum-- && ourl_queue.empty()) {
+            get_timespec(&timeout, 500); /* 0.5s timeout*/
+            pthread_cond_timedwait(&oq_cond, &oq_lock, &timeout);
+        }
+
+        if (!ourl_queue.empty()) {
+            url = ourl_queue.front();
+            ourl_queue.pop();
+        }
         pthread_mutex_unlock(&oq_lock);
-        return NULL;
+        return url;
     }
+}
+
+static void get_timespec(timespec * ts, int millisecond)
+{
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    ts->tv_sec = now.tv_sec;
+    ts->tv_nsec = now.tv_usec * 1000;
+    ts->tv_nsec += millisecond * 1000;
 }
 
 static int surl_precheck(Surl *surl)
@@ -54,6 +77,8 @@ static void push_ourlqueue(Url * ourl)
 {
     pthread_mutex_lock(&oq_lock);
     ourl_queue.push(ourl);
+    if (ourl_queue.size() == 1)
+        pthread_cond_broadcast(&oq_cond);
     pthread_mutex_unlock(&oq_lock);
 }
 

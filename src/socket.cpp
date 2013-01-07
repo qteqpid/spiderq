@@ -200,9 +200,6 @@ leave:
     regfree(&re); /* free regex object */
     if (h != NULL) free(h);
 
-    /* wait for dns to prepare new ourl */
-    if (is_ourlqueue_empty())
-    	usleep(1000000);
     end_thread();
     return NULL;
 }
