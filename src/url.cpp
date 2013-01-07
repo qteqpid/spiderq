@@ -105,7 +105,6 @@ void * urlparser(void *none)
 {
     Surl *url = NULL;
     Url  *ourl = NULL;
-    struct timespec timeout;
     map<string, string>::const_iterator itr;
     //event_base * base = event_base_new();
     //evdns_base * dnsbase = evdns_base_new(base, 1);
