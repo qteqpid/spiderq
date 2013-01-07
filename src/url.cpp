@@ -23,6 +23,7 @@ pthread_cond_t  sq_cond = PTHREAD_COND_INITIALIZER;
 void push_surlqueue(Surl *url)
 {
     if (url != NULL && surl_precheck(url)) {
+        SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I want this url: %s", url->url);
         pthread_mutex_lock(&sq_lock);
         surl_queue.push(url);
         if (surl_queue.size() == 1)
@@ -186,7 +187,6 @@ int extract_url(regex_t *re, char *str, Url *ourl)
                 free(surl);
                 continue;
             } else {
-                SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I want this url: %s", surl->url);
                 push_surlqueue(surl);
             }
 
