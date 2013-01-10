@@ -80,6 +80,7 @@ int main(int argc, void *argv[])
             Surl * surl = (Surl *)malloc(sizeof(Surl));
             surl->url = url_normalized(strdup(splits[c]));
             surl->level = 0;
+            surl->type = TYPE_HTML;
             if (surl->url != NULL)
                 push_surlqueue(surl);
         }

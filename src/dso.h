@@ -39,6 +39,13 @@ extern vector<Module *> modules_post_header;
 } while(0)
 
 
+/* The modules in this queue are used after finishing read html */
+extern vector<Module *> modules_post_html;
+
+#define SPIDER_ADD_MODULE_POST_HTML(module) do {\
+    modules_post_html.push_back(module); \
+} while(0)
+
 /* Dynamic load modules while spiderq is starting */
 extern Module * dso_load(const char *path, const char *name);
 

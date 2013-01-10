@@ -21,6 +21,7 @@ typedef struct Config {
 
     char *           module_path;
     vector<char *>   modules;
+    vector<char *>   accept_types;
 };
 
 /* give default values to member variables in struct Config */

@@ -17,7 +17,7 @@ static int handler(void * data) {
     Surl *url = (Surl *)data;
 
     /* rules does NOT work for seeds */
-    if (url->level == 0)
+    if (url->level == 0 || url->type != TYPE_HTML)
         return MODULE_OK;
 
     /* if include_nodes is NOT empty and the url match none, return MODULE_ERR */ 

@@ -1,11 +1,21 @@
 #ifndef QSOCKET_H
 #define QSOCKET_H
 
+#include "url.h"
+
 /* struct for http header */
 typedef struct Header {
     char      *content_type;
     int        status_code;
 } Header;
+
+typedef struct Response {
+    Header *header;
+    char   *body;
+    int     body_len;
+
+    struct Url    *url;
+} Response;
 
 /* create socket and connect */
 extern int build_connect(int *fd, char *ip, int port);

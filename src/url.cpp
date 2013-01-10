@@ -8,8 +8,6 @@ static queue<Url *> ourl_queue;
 static map<string, string> host_ip_map;
 
 static Url * surl2ourl(Surl *url);
-static int iscrawled(char * url);
-static char * attach_domain(char *url, const char *domain);
 static void dns_callback(int result, char type, int count, int ttl, void *addresses, void *arg);
 static int is_bin_url(char *url);
 static int surl_precheck(Surl *surl);
@@ -173,6 +171,7 @@ int extract_url(regex_t *re, char *str, Url *ourl)
             SPIDER_LOG(SPIDER_LEVEL_DEBUG, "I find a url: %s", url);
             Surl * surl = (Surl *)malloc(sizeof(Surl));
             surl->level = ourl->level + 1;
+            surl->type = TYPE_HTML;
 
             /* normalize url */
             if ((surl->url = url_normalized(url)) == NULL) {
@@ -213,7 +212,7 @@ static int is_bin_url(char *url)
     return 0;
 }
 
-static char * attach_domain(char *url, const char *domain)
+char * attach_domain(char *url, const char *domain)
 {
     if (url == NULL)
         return NULL;
@@ -261,7 +260,7 @@ char * url2fn(const Url * url)
     return fn;
 }
 
-static int iscrawled(char * url) {
+int iscrawled(char * url) {
     return search(url); /* use bloom filter algorithm */
 }
 

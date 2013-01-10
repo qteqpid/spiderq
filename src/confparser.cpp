@@ -67,6 +67,8 @@ void loadconfig(Config *conf)
                 conf->stat_interval = atoi(argv[1]);
             } else if (strcasecmp(argv[0], "make_hostdir") == 0) {
                 conf->make_hostdir = yesnotoi(argv[1]);
+            } else if (strcasecmp(argv[0], "accept_types") == 0) {
+                conf->accept_types.push_back(strdup(argv[1]));
             } else {
                 err = "Unknown directive"; goto conferr;
             }

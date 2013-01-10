@@ -48,7 +48,7 @@ int send_request(int fd, void *arg)
 
     sprintf(request, "GET /%s HTTP/1.0\r\n"
             "Host: %s\r\n"
-            "Accept: text/html\r\n"
+            "Accept: */*\r\n"
             "Connection: Keep-Alive\r\n"
             "User-Agent: Mozilla/5.0 (compatible; Qteqpidspider/1.0;)\r\n"
             "Referer: %s\r\n\r\n", url->path, url->domain, url->domain);
@@ -85,21 +85,22 @@ void set_nonblocking(int fd)
     }
 }
 
+#define HTML_MAXLEN   1024*1024
+
 void * recv_response(void * arg)
 {
     begin_thread();
 
-    int fd = -1;
-    int str_pos = 0;
-    int i, len = 0, n, trunc_head = 0;
-    char buffer[1024] = {0};
-    char header[4096] = {0};
-    Header *h = NULL;
+    int i, n, trunc_head = 0, len = 0;
     char * body_ptr = NULL;
     evso_arg * narg = (evso_arg *)arg;
-    char * fn = url2fn(narg->url);
-    regex_t re;
+    Response *resp = (Response *)malloc(sizeof(Response));
+    resp->header = NULL;
+    resp->body = (char *)malloc(HTML_MAXLEN);
+    resp->body_len = 0;
+    resp->url = narg->url;
 
+    regex_t re;
     if (regcomp(&re, HREF_PATTERN, 0) != 0) {/* compile error */
         SPIDER_LOG(SPIDER_LEVEL_ERROR, "compile regex error");
     }
@@ -107,7 +108,8 @@ void * recv_response(void * arg)
     SPIDER_LOG(SPIDER_LEVEL_INFO, "Crawling url: %s/%s", narg->url->domain, narg->url->path);
 
     while(1) {
-        n = read(narg->fd, buffer+len, 1023-len);
+        /* what if content-length exceeds HTML_MAXLEN? */
+        n = read(narg->fd, resp->body + len, 1024);
         if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) { 
                 /**
@@ -118,28 +120,32 @@ void * recv_response(void * arg)
                 usleep(100000);
                 continue;
             } 
-            SPIDER_LOG(SPIDER_LEVEL_WARN, "Read socket to %s fail: %s", fn, strerror(errno));
+            SPIDER_LOG(SPIDER_LEVEL_WARN, "Read socket fail: %s", strerror(errno));
             break;
 
         } else if (n == 0) {
             /* finish reading */
-            if (len > 0) {
-                extract_url(&re, buffer, narg->url);
-                write(fd, buffer, len);
+            resp->body_len = len;
+            if (resp->body_len > 0) {
+                extract_url(&re, resp->body, narg->url);
             }
+            /* deal resp->body */
+            for (i = 0; i < (int)modules_post_html.size(); i++) {
+                modules_post_html[i]->handle(resp);
+            }
+
             break;
 
         } else {
             //SPIDER_LOG(SPIDER_LEVEL_WARN, "read socket ok! len=%d", n);
             len += n;
-            buffer[len] = '\0';
+            resp->body[len] = '\0';
 
             if (!trunc_head) {
-                if ((body_ptr = strstr(buffer, "\r\n\r\n")) != NULL) {
+                if ((body_ptr = strstr(resp->body, "\r\n\r\n")) != NULL) {
                     *(body_ptr+2) = '\0';
-                    strcat(header, buffer);
-                    h = parse_header(header);
-                    if (!header_postcheck(h)) {
+                    resp->header = parse_header(resp->body);
+                    if (!header_postcheck(resp->header)) {
                         goto leave; /* modulues filter fail */
                     }
                     trunc_head = 1;
@@ -147,58 +153,26 @@ void * recv_response(void * arg)
                     /* cover header */
                     body_ptr += 4;
                     for (i = 0; *body_ptr; i++) {
-                        buffer[i] = *body_ptr;
+                        resp->body[i] = *body_ptr;
                         body_ptr++;
                     }
-                    buffer[i] = '\0';
+                    resp->body[i] = '\0';
                     len = i;
-
-                    /* open file to save */
-                    if ((fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0) {
-                        SPIDER_LOG(SPIDER_LEVEL_WARN, "Open file for writing fail: %s", fn);
-                        goto leave;
-                    }
-
-                } else {
-                    /* header is so long ... */
-                    strcat(header, buffer);
-                    len = 0;
-                }
+                } 
                 continue;
-            }
-
-            str_pos = extract_url(&re, buffer, narg->url);
-            char *p = rindex(buffer, ' ');
-            if (p == NULL) {
-                // 没有空格，应该也不会有href被截断
-                write(fd, buffer, len);
-                len = 0;
-
-            } else if (p-buffer >= str_pos) {
-                /* 空格在找到的最后一个链接后，则空格前
-                   (包括空格)的内容都写入，空格后的内容保留 */
-                write(fd, buffer, ((p-buffer)+1));
-                len -= ((p-buffer)+1);
-                /* 空格后的内容左移 */
-                for (i = 0; i < len; i++) {
-                    buffer[i] = *(++p);
-                }
-
-            } else {
-                /* 空格在找到的最后一个链接前，几乎不可能吧 */
-                write(fd, buffer, len);
-                len = 0;
             }
         }
     }
 
 leave:
-    close(fd); /* close file */
-    free(fn);
     close(narg->fd); /* close socket */
     free_url(narg->url); /* free Url object */
     regfree(&re); /* free regex object */
-    if (h != NULL) free(h);
+    /* free resp */
+    free(resp->header->content_type);
+    free(resp->header);
+    free(resp->body);
+    free(resp);
 
     end_thread();
     return NULL;

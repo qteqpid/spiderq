@@ -17,9 +17,13 @@ using namespace std;
 
 #define MAX_LINK_LEN 128
 
+#define TYPE_HTML  0
+#define TYPE_IMAGE 1
+
 typedef struct Surl {
     char  *url;
     int    level;
+    int    type;
 } Surl;
 
 typedef struct Url {
@@ -46,5 +50,7 @@ extern int is_surlqueue_empty();
 extern int get_surl_queue_size();
 extern int get_ourl_queue_size();
 extern int extract_url(regex_t *re, char *str, Url *domain);
+extern int iscrawled(char * url);
+extern char * attach_domain(char *url, const char *domain);
 
 #endif
