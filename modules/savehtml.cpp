@@ -13,7 +13,20 @@ static int handler(void * data) {
     if ((fd = open(fn, O_WRONLY|O_CREAT|O_TRUNC, 0666)) < 0) {
         return MODULE_ERR;
     }
-    write(fd, r->body, r->body_len);
+
+    int left = r->body_len;
+    int n = -1;
+    while (left) {
+        if ((n = write(fd, r->body, left)) < 0) {
+            // error
+            close(fd);
+            unlink(fn);
+            free(fn);
+            return MODULE_ERR;
+        } else {
+            left -= n;
+        }
+    }
     close(fd);
     free(fn);
     return MODULE_OK;

@@ -4,7 +4,7 @@
 #include <fcntl.h>
 
 /* regex pattern for parsing href */
-static const char * IMG_PATTERN = "src=\"\\s*\\([^ >\"]*\\)\\s*\"";
+static const char * IMG_PATTERN = "<img [^>]*src=\"\\s*\\([^ >\"]*\\)\\s*\"";
 
 static int handler(void * data) {
     Response *r = (Response *)data;
@@ -56,7 +56,20 @@ static int handler(void * data) {
         if ((fd = open(fn, O_WRONLY|O_CREAT|O_TRUNC, 0666)) < 0) {
             return MODULE_ERR;
         }
-        write(fd, r->body, r->body_len);
+        // save image
+        int left = r->body_len;
+        int n = -1;
+        while (left) {
+            if ((n = write(fd, r->body, left)) < 0) {
+                // error
+                close(fd);
+                unlink(fn);
+                free(fn);
+                return MODULE_ERR;
+            } else {
+                left -= n;
+            }
+        }
         close(fd);
         free(fn);
     }
@@ -69,7 +82,7 @@ static void init(Module *mod)
     SPIDER_ADD_MODULE_POST_HTML(mod);
 }
 
-Module savehtml = {
+Module saveimage = {
     STANDARD_MODULE_STUFF,
     init,
     handler
